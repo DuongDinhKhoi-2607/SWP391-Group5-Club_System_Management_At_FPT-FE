@@ -250,6 +250,136 @@ export default function DocumentArchive({ selectedClubId, triggerNotification, r
     { key: '4', name: 'Khác (Other)' }
   ];
 
+  // ── EDIT DOCUMENT VIEW ─────────────────────────────────────────────────────
+  if (showEditModal && editingDoc) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => { setShowEditModal(false); setEditingDoc(null); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Lưu trữ Tài liệu
+          </button>
+        </div>
+        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><Edit size={18} style={{ marginRight: '6px' }} /> Sửa thông tin tài liệu</h3>
+          </div>
+          <form onSubmit={handleUpdateDocument} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Tên tài liệu *</label>
+              <input
+                type="text"
+                className="input-field"
+                value={editingDoc.documentName}
+                onChange={e => setEditingDoc({ ...editingDoc, documentName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Phân loại Thư mục</label>
+              <select
+                className="select-field"
+                value={editingDoc.documentTypeId}
+                onChange={e => setEditingDoc({ ...editingDoc, documentTypeId: e.target.value })}
+              >
+                <option value="1">Thư mục Proposal (Kế hoạch)</option>
+                <option value="2">Thư mục Kịch bản mẫu (Script)</option>
+                <option value="3">Thư mục Báo cáo (Report)</option>
+                <option value="4">Khác (Other)</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Quyền truy cập (Access Level)</label>
+              <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="edit-doc-access"
+                    checked={editingDoc.accessLevel === 'Public'}
+                    onChange={() => setEditingDoc({ ...editingDoc, accessLevel: 'Public' })}
+                    style={{ accentColor: 'var(--primary)', transform: 'scale(1.2)' }}
+                  />
+                  <span>Công khai (Public)</span>
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="edit-doc-access"
+                    checked={editingDoc.accessLevel === 'Internal'}
+                    onChange={() => setEditingDoc({ ...editingDoc, accessLevel: 'Internal' })}
+                    style={{ accentColor: 'var(--primary)', transform: 'scale(1.2)' }}
+                  />
+                  <span>Nội bộ (Internal)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }} disabled={isUpdating}>
+                <Save size={16} /> {isUpdating ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+              <button type="button" className="btn btn-secondary" style={{ padding: '10px 24px' }} onClick={() => { setShowEditModal(false); setEditingDoc(null); }}>Hủy</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ── DETAIL DOCUMENT VIEW ───────────────────────────────────────────────────
+  if (showDetailModal) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => { setShowDetailModal(false); setDocDetail(null); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Lưu trữ Tài liệu
+          </button>
+        </div>
+        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><FileText size={18} style={{ marginRight: '6px' }} /> Chi tiết Tài liệu</h3>
+          </div>
+          {loadingDetail ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="login-spinner" style={{ margin: '0 auto', width: '32px', height: '32px' }}></div>
+              <p style={{ marginTop: '12px', color: 'var(--text-muted)' }}>Đang tải thông tin...</p>
+            </div>
+          ) : docDetail ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[
+                ['Tên tài liệu', docDetail.name || docDetail.documentName || 'N/A'],
+                ['Mã tài liệu', docDetail.id || docDetail.documentId || 'N/A'],
+                ['Phân loại thư mục', getDocTypeLabel(docDetail)],
+                ['Cấp độ truy cập', (() => {
+                  const isPub = docDetail.accessLevel === 'Public' || docDetail.accessLevel === 'Công khai' || docDetail.visibility === 'Public' || docDetail.visibility === 'Công khai';
+                  return <span className={`badge ${isPub ? 'badge-active' : 'badge-blocked'}`}>{isPub ? 'Công khai' : 'Nội bộ'}</span>;
+                })()],
+                ['Ngày tải lên', docDetail.uploadedAt || docDetail.createdAt ? new Date(docDetail.uploadedAt || docDetail.createdAt).toLocaleString('vi-VN') : 'N/A'],
+                ['Đính kèm sự kiện ID', docDetail.eventId || 'Không có']
+              ].map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '12px' }}>
+                  <span style={{ minWidth: '150px', fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontSize: '14px', color: 'var(--text-main)', wordBreak: 'break-word', fontWeight: 500 }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', padding: '20px 0', textAlign: 'center' }}>Không tải được thông tin tài liệu.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="document-archive-container">
       <div className="dashboard-grid-2col">
@@ -532,114 +662,6 @@ export default function DocumentArchive({ selectedClubId, triggerNotification, r
         )}
       </div>
 
-      {/* EDIT DOCUMENT MODAL */}
-      {showEditModal && editingDoc && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '480px', width: '90%' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><Edit size={16} style={{ marginRight: '6px' }} /> Sửa thông tin tài liệu</h3>
-              <button className="modal-close" onClick={() => { setShowEditModal(false); setEditingDoc(null); }}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleUpdateDocument} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-              <div className="form-group">
-                <label>Tên tài liệu *</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={editingDoc.documentName}
-                  onChange={e => setEditingDoc({ ...editingDoc, documentName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Phân loại Thư mục</label>
-                <select
-                  className="select-field"
-                  value={editingDoc.documentTypeId}
-                  onChange={e => setEditingDoc({ ...editingDoc, documentTypeId: e.target.value })}
-                >
-                  <option value="1">Thư mục Proposal (Kế hoạch)</option>
-                  <option value="2">Thư mục Kịch bản mẫu (Script)</option>
-                  <option value="3">Thư mục Báo cáo (Report)</option>
-                  <option value="4">Khác (Other)</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Quyền truy cập (Access Level)</label>
-                <div style={{ display: 'flex', gap: '16px', marginTop: '6px' }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="edit-doc-access"
-                      checked={editingDoc.accessLevel === 'Public'}
-                      onChange={() => setEditingDoc({ ...editingDoc, accessLevel: 'Public' })}
-                      style={{ accentColor: 'var(--primary)' }}
-                    />
-                    <span>Công khai (Public)</span>
-                  </label>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="edit-doc-access"
-                      checked={editingDoc.accessLevel === 'Internal'}
-                      onChange={() => setEditingDoc({ ...editingDoc, accessLevel: 'Internal' })}
-                      style={{ accentColor: 'var(--primary)' }}
-                    />
-                    <span>Nội bộ (Internal)</span>
-                  </label>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} disabled={isUpdating}>
-                  <Save size={16} /> {isUpdating ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => { setShowEditModal(false); setEditingDoc(null); }}>Hủy</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* DETAIL DOCUMENT MODAL */}
-      {showDetailModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '500px', width: '90%' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><FileText size={18} style={{ marginRight: '6px' }} /> Chi tiết Tài liệu</h3>
-              <button className="modal-close" onClick={() => { setShowDetailModal(false); setDocDetail(null); }}><X size={18} /></button>
-            </div>
-            {loadingDetail ? (
-              <div style={{ textAlign: 'center', padding: '32px' }}>
-                <div className="login-spinner" style={{ margin: '0 auto' }}></div>
-              </div>
-            ) : docDetail ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                {[
-                  ['Tên tài liệu', docDetail.name || docDetail.documentName || 'N/A'],
-                  ['Mã tài liệu', docDetail.id || docDetail.documentId || 'N/A'],
-                  ['Phân loại thư mục', getDocTypeLabel(docDetail)],
-                  ['Cấp độ truy cập', (() => {
-                    const isPub = docDetail.accessLevel === 'Public' || docDetail.accessLevel === 'Công khai' || docDetail.visibility === 'Public' || docDetail.visibility === 'Công khai';
-                    return <span className={`badge ${isPub ? 'badge-active' : 'badge-blocked'}`}>{isPub ? 'Công khai' : 'Nội bộ'}</span>;
-                  })()],
-                  ['Ngày tải lên', docDetail.uploadedAt || docDetail.createdAt ? new Date(docDetail.uploadedAt || docDetail.createdAt).toLocaleString('vi-VN') : 'N/A'],
-                  ['Đính kèm sự kiện ID', docDetail.eventId || 'Không có']
-                ].map(([label, value]) => (
-                  <div key={label} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                    <span style={{ minWidth: '150px', fontSize: '12px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
-                    <span style={{ fontSize: '13px', color: 'var(--text-main)', wordBreak: 'break-all' }}>{value}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', padding: '16px 0' }}>Không tải được thông tin tài liệu.</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -178,6 +178,120 @@ export default function EvidenceApproval({ triggerNotification, selectedClubId }
   const approvedCount = evidences.filter(e => e.status === 'Approved' || e.rawStatus === 'Hợp lệ' || e.rawStatus === 'Đã duyệt').length;
   const rejectedCount = evidences.filter(e => e.status === 'Rejected' || e.rawStatus === 'Không hợp lệ' || e.rawStatus === 'Từ chối' || e.rawStatus === 'Đã từ chối').length;
 
+  // ── EVIDENCE DETAIL VIEW ───────────────────────────────────────────────────
+  if (expandedId) {
+    const ev = evidences.find(e => String(e.id) === String(expandedId));
+    if (ev) {
+      const isWaitingLeader = !selectedClubId && ev.status === 'Pending' && ev.rawStatus !== 'Chờ Manager duyệt';
+      return (
+        <div style={{ animation: 'fadeIn 0.2s ease' }}>
+          <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setExpandedId(null)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+            >
+              <X size={16} /> Quay lại Duyệt Minh chứng
+            </button>
+          </div>
+          <div className="glass-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+              <h3 className="glass-card-title"><FileText size={18} style={{ marginRight: '6px' }} /> Chi tiết & Phê duyệt Minh chứng</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+                {[
+                  ['Sinh viên nộp', `${ev.userFullName} (${ev.userId})`],
+                  ['Câu lạc bộ', ev.clubName],
+                  ['Sự kiện', ev.eventName],
+                  ['Loại minh chứng', ev.evidenceType],
+                  ['Thời điểm nộp', new Date(ev.submittedAt).toLocaleString('vi-VN')],
+                  ['Trạng thái', (() => {
+                    if (ev.status === 'Pending') {
+                      return isWaitingLeader ? (
+                        <span className="badge badge-warning" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
+                          <Clock size={10} style={{ marginRight: '4px' }}/> Chờ Trưởng CLB duyệt trước
+                        </span>
+                      ) : (
+                        <span className="badge badge-member"><Clock size={10} style={{ marginRight: '4px' }}/> Đã qua Leader (Sẵn sàng duyệt)</span>
+                      );
+                    }
+                    if (ev.status === 'Approved') return <span className="badge badge-active"><CheckCircle size={10} style={{ marginRight: '4px' }}/> Đã duyệt</span>;
+                    return <span className="badge badge-blocked"><X size={10} style={{ marginRight: '4px' }}/> Từ chối</span>;
+                  })()]
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '10px' }}>
+                    <span style={{ minWidth: '130px', fontSize: '13px', color: 'var(--text-muted)' }}>{label}</span>
+                    <span style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: 500 }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {ev.description && (
+                <div style={{ fontSize: '14px', color: 'var(--text-main)', fontStyle: 'italic', background: 'rgba(0,0,0,0.15)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                  <strong style={{ color: 'var(--text-heading)', display: 'block', marginBottom: '8px', fontStyle: 'normal' }}>Mô tả của sinh viên:</strong>
+                  {ev.description}
+                </div>
+              )}
+
+              {ev.rejectReason && (
+                <div style={{ padding: '16px', background: 'rgba(239,68,68,0.08)', borderRadius: '10px', fontSize: '14px', color: 'var(--text-main)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <strong style={{ color: 'var(--error)' }}>Lý do từ chối trước đó:</strong> {ev.rejectReason}
+                </div>
+              )}
+
+              {ev.fileUrl && (
+                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>Hình ảnh minh chứng: (Click để xem kích thước lớn)</div>
+                  <img
+                    src={ev.fileUrl}
+                    alt="Evidence"
+                    style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: '10px', border: '1px solid var(--border)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}
+                    onClick={() => setPreviewUrl(ev.fileUrl)}
+                  />
+                </div>
+              )}
+
+              {isWaitingLeader && (
+                <div style={{ fontSize: '14px', color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  ⚠️ Minh chứng này đang ở trạng thái <strong>"Đang chờ"</strong>. Trưởng CLB (Leader) phải bấm duyệt trước thì Manager mới có thể phê duyệt cấp cuối!
+                </div>
+              )}
+
+              {ev.status === 'Pending' ? (
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '10px' }}>
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Lý do từ chối (bắt buộc nếu từ chối):</label>
+                    <textarea
+                      className="textarea-field"
+                      rows={3}
+                      placeholder="Nhập lý do từ chối chi tiết..."
+                      value={remarkMap[ev.id] || ''}
+                      onChange={e => setRemarkMap(m => ({ ...m, [ev.id]: e.target.value }))}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    <button className="btn btn-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }} onClick={() => { handleApprove(ev); setExpandedId(null); }}>
+                      <Check size={16} /> Phê duyệt
+                    </button>
+                    <button className="btn btn-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }} onClick={() => { handleReject(ev); setExpandedId(null); }}>
+                      <X size={16} /> Từ chối
+                    </button>
+                    <button className="btn btn-secondary" style={{ padding: '10px 24px' }} onClick={() => setExpandedId(null)}>Đóng</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                  <button className="btn btn-secondary" style={{ padding: '10px 24px' }} onClick={() => setExpandedId(null)}>Đóng</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
   return (
     <div className="evidence-approval-container">
 
@@ -280,109 +394,6 @@ export default function EvidenceApproval({ triggerNotification, selectedClubId }
         )}
       </div>
 
-      {/* MODAL: CHI TIẾT & PHÊ DUYỆT MINH CHỨNG */}
-      {expandedId && (() => {
-        const ev = filtered.find(e => e.id === expandedId);
-        if (!ev) return null;
-        const isWaitingLeader = !selectedClubId && ev.status === 'Pending' && ev.rawStatus !== 'Chờ Manager duyệt';
-        return (
-          <div className="modal-backdrop">
-            <div className="modal-content glass-card" style={{ maxWidth: '540px', width: '90%' }}>
-              <div className="modal-header">
-                <h3 className="modal-title"><FileText size={18} style={{ marginRight: '6px' }} /> Chi tiết &amp; Phê duyệt Minh chứng</h3>
-                <button className="close-btn" onClick={() => setExpandedId(null)}><X size={18} /></button>
-              </div>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {[
-                    ['Sinh viên nộp', `${ev.userFullName} (${ev.userId})`],
-                    ['Câu lạc bộ', ev.clubName],
-                    ['Sự kiện', ev.eventName],
-                    ['Loại minh chứng', ev.evidenceType],
-                    ['Thời điểm nộp', new Date(ev.submittedAt).toLocaleString('vi-VN')],
-                    ['Trạng thái', (() => {
-                      if (ev.status === 'Pending') {
-                        return isWaitingLeader ? (
-                          <span className="badge badge-warning" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
-                            <Clock size={10} /> Chờ Trưởng CLB (Leader) duyệt trước
-                          </span>
-                        ) : (
-                          <span className="badge badge-member"><Clock size={10} /> Đã qua Leader (Sẵn sàng duyệt)</span>
-                        );
-                      }
-                      if (ev.status === 'Approved') return <span className="badge badge-active"><CheckCircle size={10} /> Đã duyệt</span>;
-                      return <span className="badge badge-blocked"><X size={10} /> Từ chối</span>;
-                    })()]
-                  ].map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                      <span style={{ minWidth: '150px', fontSize: '12px', color: 'var(--text-muted)' }}>{label}</span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>{value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {ev.description && (
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                    <strong>Mô tả của sinh viên:</strong> {ev.description}
-                  </div>
-                )}
-
-                {ev.rejectReason && (
-                  <div style={{ padding: '8px', background: 'rgba(239,68,68,0.08)', borderRadius: '6px', fontSize: '12px', color: 'var(--error)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                    <strong>Lý do từ chối trước đó:</strong> {ev.rejectReason}
-                  </div>
-                )}
-
-                {ev.fileUrl && (
-                  <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Hình ảnh minh chứng: (Click để xem kích thước lớn)</div>
-                    <img
-                      src={ev.fileUrl}
-                      alt="Evidence"
-                      style={{ width: '100%', maxHeight: '220px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer' }}
-                      onClick={() => setPreviewUrl(ev.fileUrl)}
-                    />
-                  </div>
-                )}
-
-                {isWaitingLeader && (
-                  <div style={{ fontSize: '12px', color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.2)' }}>
-                    ⚠️ Minh chứng này đang ở trạng thái <strong>"Đang chờ"</strong>. Trưởng CLB (Leader) phải bấm duyệt trước thì Manager mới có thể phê duyệt cấp cuối!
-                  </div>
-                )}
-
-                {ev.status === 'Pending' ? (
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-                    <div className="form-group" style={{ marginBottom: '12px' }}>
-                      <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Lý do từ chối (bắt buộc nếu từ chối):</label>
-                      <textarea
-                        className="textarea-field"
-                        rows={2}
-                        placeholder="Nhập lý do từ chối..."
-                        value={remarkMap[ev.id] || ''}
-                        onChange={e => setRemarkMap(m => ({ ...m, [ev.id]: e.target.value }))}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-success btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => { handleApprove(ev); setExpandedId(null); }}>
-                        <Check size={14} /> Phê duyệt
-                      </button>
-                      <button className="btn btn-danger btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => { handleReject(ev); setExpandedId(null); }}>
-                        <X size={14} /> Từ chối
-                      </button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setExpandedId(null)}>Đóng</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => setExpandedId(null)}>Đóng</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Image Preview Modal */}
       {previewUrl && (

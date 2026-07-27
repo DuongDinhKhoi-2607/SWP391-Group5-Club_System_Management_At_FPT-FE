@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createEvent, getEventsByClub, cancelEvent, updateEvent, getEventParticipants, getEventEvidences } from '../../services/eventService';
-import { Calendar, Plus, MapPin, AlertTriangle, Edit, X, Save, XCircle, Users, CheckCircle, Clock, Search, Paperclip, FileText, Download } from 'lucide-react';
+import { Calendar, Plus, MapPin, AlertTriangle, Edit, X, Save, XCircle, Users, CheckCircle, Clock, Search, Paperclip, FileText, Download, Eye } from 'lucide-react';
 import { parseDateVN, toLocalISOString, formatDateVN } from '../../utils/validator';
 import VietnameseDateTimePicker from '../../components/VietnameseDateTimePicker';
 
@@ -40,7 +40,7 @@ export default function EventManager({ selectedClubId, triggerNotification }) {
     files: []
   });
   const [selectedEventId, setSelectedEventId] = useState(null);
-  const selectedEvent = events.find(e => String(e.id || e.eventId) === String(selectedEventId));
+  const selectedEvent = events.find(e => String(e.id || e.eventId || e.clubEventId) === String(selectedEventId));
   
   // Validation errors state
   const [errors, setErrors] = useState({});
@@ -65,7 +65,7 @@ export default function EventManager({ selectedClubId, triggerNotification }) {
       setEvents(Array.isArray(data) ? data : (data?.data ?? []));
     } catch (err) {
       console.error('[EventManager] Lỗi tải sự kiện:', err);
-      triggerNotification('Không tải được danh sách sự kiện!', 'error');
+      triggerNotification?.('Không tải được danh sách sự kiện!', 'error');
       setEvents([]);
     } finally {
       setLoadingEvents(false);
@@ -418,8 +418,468 @@ export default function EventManager({ selectedClubId, triggerNotification }) {
     }
   };
 
+  // ── CREATE VIEW ────────────────────────────────────────────────────────────
+  if (showCreateModal) {
+    return (
+      <div className="event-manager-container" style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowCreateModal(false)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Danh sách Sự kiện
+          </button>
+        </div>
+        <div className="glass-card">
+          <div className="glass-card-header">
+            <h3 className="glass-card-title"><Plus size={18} style={{ marginRight: '6px' }} /> Lập kế hoạch sự kiện mới</h3>
+          </div>
+          <form onSubmit={handleCreateEvent} noValidate style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="form-group">
+              <label>Tên chương trình / sự kiện <span style={{ color: 'var(--error, #ef4444)' }}>*</span></label>
+              <input
+                type="text"
+                className="input-field"
+                value={newEvent.eventName}
+                onChange={e => {
+                  setNewEvent({ ...newEvent, eventName: e.target.value });
+                  if (errors.eventName) setErrors(prev => ({ ...prev, eventName: null }));
+                }}
+                placeholder="Workshop, Đại hội, Teambuilding..."
+              />
+              {errors.eventName && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.eventName}</span>}
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Thời gian bắt đầu <span style={{ color: 'var(--error, #ef4444)' }}>*</span></label>
+                <VietnameseDateTimePicker
+                  value={newEvent.startTime}
+                  onChange={val => handleStartTimeChange(val)}
+                  onBlur={val => handleStartTimeChange(val)}
+                  error={!!errors.startTime}
+                  placeholder="dd/mm/yyyy --:--"
+                />
+                {errors.startTime && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.startTime}</span>}
+              </div>
+              <div className="form-group">
+                <label>Thời gian kết thúc</label>
+                <VietnameseDateTimePicker
+                  value={newEvent.endTime}
+                  min={newEvent.startTime || undefined}
+                  onChange={val => handleEndTimeChange(val)}
+                  onBlur={val => handleEndTimeChange(val)}
+                  error={!!errors.endTime}
+                  placeholder="dd/mm/yyyy --:--"
+                />
+                {errors.endTime && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.endTime}</span>}
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Ngân sách dự trù (VNĐ) <span style={{ color: 'var(--error, #ef4444)' }}>*</span></label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="input-field"
+                  value={newEvent.planBudget}
+                  onChange={e => {
+                    const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                    setNewEvent({ ...newEvent, planBudget: cleaned });
+                    if (errors.planBudget) setErrors(prev => ({ ...prev, planBudget: null }));
+                  }}
+                  placeholder="1500000"
+                />
+                {errors.planBudget && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.planBudget}</span>}
+              </div>
+              <div className="form-group">
+                <label>Số lượng tham gia dự kiến</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="input-field"
+                  value={newEvent.targetParticipants}
+                  onChange={e => {
+                    const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                    setNewEvent({ ...newEvent, targetParticipants: cleaned });
+                    if (errors.targetParticipants) setErrors(prev => ({ ...prev, targetParticipants: null }));
+                  }}
+                  placeholder="50"
+                />
+                {errors.targetParticipants && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.targetParticipants}</span>}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Địa điểm tổ chức <span style={{ color: 'var(--error, #ef4444)' }}>*</span></label>
+              <select
+                className="select-field"
+                value={newEvent.location}
+                onChange={e => {
+                  setNewEvent({ ...newEvent, location: e.target.value });
+                  if (errors.location) setErrors(prev => ({ ...prev, location: null }));
+                }}
+              >
+                <option value="">-- Chọn địa điểm --</option>
+                <option value="Sân thượng">Sân thượng (~ 100 - 150 người)</option>
+                <option value="Hội trường A">Hội trường A (~ 200 - 300 người)</option>
+                <option value="Hội trường B">Hội trường B (~ 150 - 300 người)</option>
+                <option value="Sảnh trống đồng">Sảnh trống đồng (~ 50 - 100 người)</option>
+                <option value="Sân trường 1">Sân trường 1 (~ 300 - 400 người)</option>
+                <option value="Sân trường 2">Sân trường 2 (~ 300 - 400 người)</option>
+                <option value="Sân bóng">Sân bóng (~ 100 - 150 người)</option>
+              </select>
+              {errors.location && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.location}</span>}
+            </div>
+
+            <div className="form-group">
+              <label>Mô tả ngắn gọn chương trình</label>
+              <textarea
+                className="textarea-field"
+                value={newEvent.description}
+                onChange={e => {
+                  setNewEvent({ ...newEvent, description: e.target.value });
+                  if (errors.description) setErrors(prev => ({ ...prev, description: null }));
+                }}
+                placeholder="Nội dung, kế hoạch chạy truyền thông..."
+                rows={4}
+              />
+              {errors.description && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.description}</span>}
+            </div>
+
+            <div className="form-group">
+              <label>Đính kèm tài liệu (Files, tuỳ chọn)</label>
+              <input
+                type="file"
+                className="input-field"
+                multiple
+                onChange={e => setNewEvent({ ...newEvent, files: e.target.files })}
+                style={{ padding: '8px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span className="login-spinner" />
+                ) : (
+                  <><Calendar size={16} /> Lên lịch &amp; Đăng ký sự kiện</>
+                )}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Hủy bỏ</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ── DETAIL VIEW ────────────────────────────────────────────────────────────
+  if (selectedEventId && selectedEvent) {
+    return (
+      <div className="event-manager-container" style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setSelectedEventId(null)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Danh sách Sự kiện
+          </button>
+        </div>
+
+        <div className="glass-card">
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><Calendar size={18} style={{ marginRight: '6px' }} /> Chi tiết &amp; Thành viên Tham gia</h3>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '16px' }}>
+            <button
+              className={`btn btn-sm ${activeModalTab === 'details' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveModalTab('details')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Calendar size={14} /> Thông tin Kế hoạch
+            </button>
+            <button
+              className={`btn btn-sm ${activeModalTab === 'participants' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveModalTab('participants')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Users size={14} /> Danh sách Tham gia ({participants.length})
+            </button>
+          </div>
+
+          {activeModalTab === 'details' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <h4 style={{ fontSize: '18px', color: 'var(--text-heading)', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '10px', margin: 0 }}>
+                {selectedEvent.eventName || selectedEvent.name}
+              </h4>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[
+                  ['Ngày bắt đầu', selectedEvent.startTime ? formatDateVN(selectedEvent.startTime) : 'N/A'],
+                  ['Ngày kết thúc', selectedEvent.endTime ? formatDateVN(selectedEvent.endTime) : 'N/A'],
+                  ['Địa điểm', selectedEvent.location || 'N/A'],
+                  ['Ngân sách dự toán', selectedEvent.planBudget || selectedEvent.budget ? `${Number(selectedEvent.planBudget || selectedEvent.budget).toLocaleString('vi-VN')} VNĐ` : 'N/A'],
+                  ['Số lượng dự kiến', selectedEvent.targetParticipants ? `${selectedEvent.targetParticipants} người` : 'N/A'],
+                  ['Trạng thái phê duyệt', (() => {
+                    const eStatus = selectedEvent.status || selectedEvent.approvalStatus || 'Pending';
+                    if (eStatus === 'Approved' || eStatus === 'Đã duyệt') return <span className="badge badge-success">ĐÃ DUYỆT</span>;
+                    if (eStatus === 'Rejected' || eStatus === 'Từ chối' || eStatus === 'Bị từ chối') return <span className="badge badge-blocked">BỊ TỪ CHỐI / YÊU CẦU SỬA</span>;
+                    if (eStatus === 'Cancelled' || eStatus === 'Đã hủy') return <span className="badge badge-blocked" style={{ filter: 'grayscale(0.6)' }}>ĐÃ HỦY</span>;
+                    return <span className="badge badge-pending">CHỜ DUYỆT</span>;
+                  })()],
+                  ['Mô tả chi tiết', selectedEvent.description || 'Không có mô tả chi tiết']
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                    <span style={{ minWidth: '160px', fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: '14px', color: 'var(--text-main)', wordBreak: 'break-all' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {(selectedEvent.rejectReason || selectedEvent.approvalRemark) && (
+                <div style={{ padding: '12px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)', fontSize: '13px', color: 'var(--text-muted)' }}>
+                  <strong style={{ color: '#ef4444' }}>Lý do / Phản hồi từ Manager:</strong> {selectedEvent.rejectReason || selectedEvent.approvalRemark}
+                </div>
+              )}
+
+              {/* Attachments */}
+              {(() => {
+                const eId = selectedEvent.id || selectedEvent.eventId;
+                const eName = selectedEvent.eventName || selectedEvent.name;
+                let attachedFiles = selectedEvent.files || selectedEvent.documents || selectedEvent.attachments || [];
+                if (typeof attachedFiles === 'string') {
+                  try {
+                    const parsed = JSON.parse(attachedFiles);
+                    attachedFiles = Array.isArray(parsed) ? parsed : [parsed];
+                  } catch {
+                    attachedFiles = [{ url: attachedFiles, name: 'Tài liệu đính kèm' }];
+                  }
+                }
+                if (!Array.isArray(attachedFiles) || attachedFiles.length === 0) {
+                  const byId = localStorage.getItem(`fpt_event_files_${eId}`);
+                  const byName = localStorage.getItem(`fpt_event_files_${eName}`);
+                  const str = byId || byName;
+                  if (str) {
+                    try { 
+                      const parsed = JSON.parse(str);
+                      attachedFiles = Array.isArray(parsed) ? parsed : [parsed];
+                    } catch {}
+                  }
+                }
+
+                if (!Array.isArray(attachedFiles) || attachedFiles.length === 0) return null;
+
+                const isImageFile = (file) => {
+                  const name = (file.name || file.fileName || file.url || file.path || '').toLowerCase();
+                  const type = (file.type || '').toLowerCase();
+                  return type.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
+                };
+
+                return (
+                  <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <strong style={{ fontSize: '14px', color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                      <Paperclip size={16} style={{ color: 'var(--primary)' }} /> Tài liệu &amp; Hình ảnh đính kèm ({attachedFiles.length}):
+                    </strong>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {attachedFiles.map((file, idx) => {
+                        const fileName = file.name || file.fileName || `Tài_liệu_${idx + 1}`;
+                        const fileSize = file.size ? `${(file.size / 1024).toFixed(1)} KB` : '';
+                        const fileUrl = file.url || file.fileUrl || file.path;
+                        const isImg = isImageFile(file);
+
+                        const handleDownload = () => {
+                          if (!fileUrl) { alert('Không tìm thấy đường dẫn file!'); return; }
+                          const a = document.createElement('a');
+                          a.href = fileUrl;
+                          a.download = fileName;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        };
+
+                        if (isImg) {
+                          return (
+                            <div key={idx} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: '13px', color: 'var(--text-main)', fontWeight: 600 }}>🖼️ {fileName}</span>
+                                {fileUrl && (
+                                  <button type="button" className="btn btn-secondary btn-sm" onClick={handleDownload} style={{ fontSize: '12px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Download size={14} /> Tải ảnh
+                                  </button>
+                                )}
+                              </div>
+                              {fileUrl && (
+                                <div style={{ textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '12px' }}>
+                                  <img src={fileUrl} alt={fileName} style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '6px', objectFit: 'contain' }} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                              <FileText size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                              <span style={{ fontSize: '13px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {fileName} {fileSize && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>({fileSize})</span>}
+                              </span>
+                            </div>
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={handleDownload} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', padding: '4px 12px', flexShrink: 0 }}>
+                              <Download size={14} /> Tải về
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {activeModalTab === 'participants' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div className="search-input-wrapper" style={{ flex: 1, minWidth: '220px' }}>
+                  <Search className="search-icon" size={18} />
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Tìm theo tên, MSSV..."
+                    value={participantSearch}
+                    onChange={e => setParticipantSearch(e.target.value)}
+                    style={{ padding: '8px 12px 8px 40px', fontSize: '14px' }}
+                  />
+                </div>
+                <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                  Tổng: <strong>{participants.length}</strong> tham gia (Manager đã duyệt: <strong>{participants.filter(p => getParticipantEvidenceStatus(p).isManagerApproved).length}</strong>)
+                </div>
+              </div>
+
+              {loadingParticipants ? (
+                <div className="empty-state-view" style={{ padding: '40px' }}>
+                  <span className="login-spinner" style={{ width: '32px', height: '32px' }} />
+                  <p style={{ fontSize: '14px', marginTop: '12px' }}>Đang tải danh sách tham gia...</p>
+                </div>
+              ) : participants.length === 0 ? (
+                <div className="empty-state-view" style={{ padding: '40px' }}>
+                  <Users className="empty-state-icon" style={{ width: '48px', height: '48px' }} />
+                  <p style={{ fontSize: '14px', marginTop: '12px' }}>Chưa có sinh viên nào đăng ký tham gia sự kiện này.</p>
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="custom-table" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>STT</th>
+                        <th>Họ và Tên</th>
+                        <th>MSSV</th>
+                        <th>Vai trò</th>
+                        <th>Trạng thái Minh chứng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {participants
+                        .filter(p => {
+                          const q = participantSearch.toLowerCase();
+                          return !q || (p.fullName || p.name || '').toLowerCase().includes(q) || (p.studentId || p.studentCode || '').toLowerCase().includes(q);
+                        })
+                        .map((p, idx) => {
+                          const evInfo = getParticipantEvidenceStatus(p);
+                          return (
+                            <tr key={p.participantId || p.id || idx}>
+                              <td>{idx + 1}</td>
+                              <td style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{p.fullName || p.name || 'Sinh viên'}</td>
+                              <td>{p.studentId || p.studentCode || 'N/A'}</td>
+                              <td>{p.roleInEvent || 'Thành viên'}</td>
+                              <td>
+                                <span
+                                  className="badge"
+                                  style={{
+                                    background: evInfo.isManagerApproved ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                                    color: evInfo.color,
+                                    border: `1px solid ${evInfo.color}40`,
+                                    fontSize: '12px',
+                                    padding: '4px 10px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}
+                                >
+                                  {evInfo.isManagerApproved ? <CheckCircle size={12} /> : null}
+                                  {evInfo.label}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary" onClick={() => setSelectedEventId(null)} style={{ padding: '8px 20px', fontWeight: 600 }}>Đóng</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── CANCEL CONFIRM VIEW ────────────────────────────────────────────────────
+  if (cancelTargetId) {
+    return (
+      <div className="event-manager-container" style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setCancelTargetId(null)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Danh sách Sự kiện
+          </button>
+        </div>
+        <div className="glass-card" style={{ maxWidth: '500px', margin: '0 auto' }}>
+          <div className="modal-header" style={{ marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+            <h3 className="modal-title" style={{ color: 'var(--error)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <XCircle size={20} /> Xác nhận Hủy Sự kiện
+            </h3>
+          </div>
+          <p style={{ fontSize: '14px', lineHeight: 1.6, margin: '20px 0', color: 'var(--text-main)' }}>
+            Bạn có chắc chắn muốn hủy sự kiện này không? Hành động này <strong>không thể hoàn tác</strong>.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+            <button
+              className="btn btn-danger"
+              style={{ flex: 1, padding: '10px' }}
+              onClick={handleCancelEvent}
+              disabled={isCancelling}
+            >
+              {isCancelling ? 'Đang hủy...' : 'Đồng ý Hủy sự kiện'}
+            </button>
+            <button className="btn btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => setCancelTargetId(null)}>Không, quay lại</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── LIST VIEW (DEFAULT) ────────────────────────────────────────────────────
   return (
-    <div className="event-manager-container">
+    <div className="event-manager-container" style={{ animation: 'fadeIn 0.2s ease' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
         {/* Top Header Card with Action Button */}
@@ -441,523 +901,93 @@ export default function EventManager({ selectedClubId, triggerNotification }) {
           </button>
         </div>
 
-        {/* Events Directory (FIRST!) */}
+        {/* Events Directory */}
         <div className="glass-card">
           <div className="glass-card-header">
             <h3 className="glass-card-title"><Calendar size={18} /> Danh sách Sự kiện của CLB</h3>
           </div>
 
-            {loadingEvents ? (
-              <div className="empty-state-view">
-                <span className="login-spinner" style={{ width: '28px', height: '28px' }} />
-                <p style={{ marginTop: '10px' }}>Đang tải...</p>
-              </div>
-            ) : events.length === 0 ? (
-              <div className="empty-state-view">
-                <Calendar className="empty-state-icon" />
-                <p>Chưa có sự kiện nào được tạo.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {events.map(e => {
-                  const eId = e.id || e.eventId;
-                  const eName = e.eventName || e.name;
-                  const eLocation = e.location || 'Chưa cập nhật';
-                  const eBudget = e.planBudget;
-                  const eStatus = e.status || e.approvalStatus || 'Pending';
-                  
-                  const isPending = eStatus === 'Pending' || eStatus === 'Chờ duyệt';
-                  const isApproved = eStatus === 'Approved' || eStatus === 'Đã duyệt';
-                  const isRejected = eStatus === 'Rejected' || eStatus === 'Từ chối';
-                  const isCancelled = eStatus === 'Cancelled' || eStatus === 'Đã hủy';
+          {loadingEvents ? (
+            <div className="empty-state-view">
+              <span className="login-spinner" style={{ width: '28px', height: '28px' }} />
+              <p style={{ marginTop: '10px' }}>Đang tải...</p>
+            </div>
+          ) : events.length === 0 ? (
+            <div className="empty-state-view">
+              <Calendar className="empty-state-icon" />
+              <p>Chưa có sự kiện nào được tạo.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {events.map(e => {
+                const eId = e.id || e.eventId;
+                const eName = e.eventName || e.name;
+                const eLocation = e.location || 'Chưa cập nhật';
+                const eBudget = e.planBudget;
+                const eStatus = e.status || e.approvalStatus || 'Pending';
+                
+                const isPending = eStatus === 'Pending' || eStatus === 'Chờ duyệt';
+                const isApproved = eStatus === 'Approved' || eStatus === 'Đã duyệt';
+                const isRejected = eStatus === 'Rejected' || eStatus === 'Từ chối';
+                const isCancelled = eStatus === 'Cancelled' || eStatus === 'Đã hủy';
 
-                  return (
-                    <div key={eId} className="glass-card" style={{ padding: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', marginBottom: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
-                        <div>
-                          <h4 style={{ margin: 0, fontWeight: 700, fontSize: '14px', color: 'var(--text-heading)' }}>{eName}</h4>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              <MapPin size={12} /> {eLocation}
-                            </span>
-                            {eBudget && (
-                              <span>💰 Ngân sách: {Number(eBudget).toLocaleString('vi-VN')} VNĐ</span>
-                            )}
-                          </div>
-                          {e.startTime && (
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                              ⏱ {formatDateVN(e.startTime)}
-                              {e.endTime && ` - ${formatDateVN(e.endTime)}`}
-                            </div>
+                return (
+                  <div key={eId} className="glass-card" style={{ padding: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', marginBottom: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                      <div>
+                        <h4 style={{ margin: 0, fontWeight: 700, fontSize: '16px', color: 'var(--text-heading)' }}>{eName}</h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '10px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <MapPin size={14} /> {eLocation}
+                          </span>
+                          {eBudget && (
+                            <span>💰 Ngân sách: {Number(eBudget).toLocaleString('vi-VN')} VNĐ</span>
                           )}
                         </div>
-
-                        <div>
-                          {isPending && <span className="badge badge-pending">CHỜ DUYỆT</span>}
-                          {isApproved && <span className="badge badge-success">ĐÃ DUYỆT</span>}
-                          {isRejected && <span className="badge badge-blocked">BỊ TỪ CHỐI</span>}
-                          {isCancelled && <span className="badge badge-blocked" style={{ filter: 'grayscale(0.6)' }}>ĐÃ HỦỶ</span>}
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', borderTop: '1px solid rgba(255,255,255,0.03)', marginTop: '12px', paddingTop: '8px' }}>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '4px 8px' }}
-                          onClick={() => setSelectedEventId(eId)}
-                        >
-                          Xem chi tiết
-                        </button>
-                        {!isCancelled && (
-                          <>
-                            <button
-                              className="btn btn-sm"
-                              title="Hủy sự kiện"
-                              style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
-                              onClick={() => setCancelTargetId(eId)}
-                            >
-                              <XCircle size={11} /> Hủy
-                            </button>
-                          </>
+                        {e.startTime && (
+                          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                            ⏱ {formatDateVN(e.startTime)}
+                            {e.endTime && ` - ${formatDateVN(e.endTime)}`}
+                          </div>
                         )}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
 
-      {/* DETAIL EVENT MODAL */}
-      {selectedEventId && selectedEvent && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '640px', width: '92%' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><Calendar size={18} style={{ marginRight: '6px' }} /> Chi tiết &amp; Thành viên Tham gia</h3>
-              <button className="modal-close" onClick={() => setSelectedEventId(null)}><X size={18} /></button>
-            </div>
-
-            {/* Modal Tabs */}
-            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginTop: '12px' }}>
-              <button
-                className={`btn btn-sm ${activeModalTab === 'details' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setActiveModalTab('details')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Calendar size={14} /> Thông tin Kế hoạch
-              </button>
-              <button
-                className={`btn btn-sm ${activeModalTab === 'participants' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setActiveModalTab('participants')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Users size={14} /> Danh sách Tham gia ({participants.length})
-              </button>
-            </div>
-
-            {activeModalTab === 'details' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
-                <h4 style={{ fontSize: '18px', color: 'var(--text-heading)', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '10px', margin: 0 }}>
-                  {selectedEvent.eventName || selectedEvent.name}
-                </h4>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {[
-                    ['Ngày bắt đầu', selectedEvent.startTime ? formatDateVN(selectedEvent.startTime) : 'N/A'],
-                    ['Ngày kết thúc', selectedEvent.endTime ? formatDateVN(selectedEvent.endTime) : 'N/A'],
-                    ['Địa điểm', selectedEvent.location || 'N/A'],
-                    ['Ngân sách dự toán', selectedEvent.planBudget || selectedEvent.budget ? `${Number(selectedEvent.planBudget || selectedEvent.budget).toLocaleString('vi-VN')} VNĐ` : 'N/A'],
-                    ['Số lượng dự kiến', selectedEvent.targetParticipants ? `${selectedEvent.targetParticipants} người` : 'N/A'],
-                    ['Trạng thái phê duyệt', (() => {
-                      const eStatus = selectedEvent.status || selectedEvent.approvalStatus || 'Pending';
-                      if (eStatus === 'Approved' || eStatus === 'Đã duyệt') return <span className="badge badge-success">ĐÃ DUYỆT</span>;
-                      if (eStatus === 'Rejected' || eStatus === 'Từ chối' || eStatus === 'Bị từ chối') return <span className="badge badge-blocked">BỊ TỪ CHỐI / YÊU CẦU SỬA</span>;
-                      if (eStatus === 'Cancelled' || eStatus === 'Đã hủy') return <span className="badge badge-blocked" style={{ filter: 'grayscale(0.6)' }}>ĐÃ HỦY</span>;
-                      return <span className="badge badge-pending">CHỜ DUYỆT</span>;
-                    })()],
-                    ['Mô tả chi tiết', selectedEvent.description || 'Không có mô tả chi tiết']
-                  ].map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                      <span style={{ minWidth: '150px', fontSize: '12px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-main)', wordBreak: 'break-all' }}>{value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {(selectedEvent.rejectReason || selectedEvent.approvalRemark) && (
-                  <div style={{ padding: '10px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)', fontSize: '12px', color: 'var(--text-muted)' }}>
-                    <strong style={{ color: '#ef4444' }}>Lý do / Phản hồi từ Manager:</strong> {selectedEvent.rejectReason || selectedEvent.approvalRemark}
-                  </div>
-                )}
-
-                {/* File đính kèm / Kế hoạch & Hình ảnh */}
-                {(() => {
-                  const eId = selectedEvent.id || selectedEvent.eventId;
-                  const eName = selectedEvent.eventName || selectedEvent.name;
-                  let attachedFiles = selectedEvent.files || selectedEvent.documents || selectedEvent.attachments || [];
-                  if (!Array.isArray(attachedFiles) || attachedFiles.length === 0) {
-                    const byId = localStorage.getItem(`fpt_event_files_${eId}`);
-                    const byName = localStorage.getItem(`fpt_event_files_${eName}`);
-                    const str = byId || byName;
-                    if (str) {
-                      try { attachedFiles = JSON.parse(str); } catch {}
-                    }
-                  }
-
-                  if (!attachedFiles || attachedFiles.length === 0) return null;
-
-                  const isImageFile = (file) => {
-                    const name = (file.name || file.fileName || file.url || file.path || '').toLowerCase();
-                    const type = (file.type || '').toLowerCase();
-                    return type.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
-                  };
-
-                  return (
-                    <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                      <strong style={{ fontSize: '13px', color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                        <Paperclip size={14} style={{ color: 'var(--primary)' }} /> Tài liệu &amp; Hình ảnh đính kèm ({attachedFiles.length}):
-                      </strong>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {attachedFiles.map((file, idx) => {
-                          const fileName = file.name || file.fileName || `Tài_liệu_${idx + 1}`;
-                          const fileSize = file.size ? `${(file.size / 1024).toFixed(1)} KB` : '';
-                          const fileUrl = file.url || file.fileUrl || file.path;
-                          const isImg = isImageFile(file);
-
-                          const handleDownload = () => {
-                            if (!fileUrl) {
-                              alert('Không tìm thấy đường dẫn file!');
-                              return;
-                            }
-                            const a = document.createElement('a');
-                            a.href = fileUrl;
-                            a.download = fileName;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                          };
-
-                          if (isImg) {
-                            return (
-                              <div key={idx} style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <span style={{ fontSize: '12px', color: 'var(--text-main)', fontWeight: 600 }}>🖼️ {fileName}</span>
-                                  {fileUrl && (
-                                    <button
-                                      type="button"
-                                      className="btn btn-secondary btn-sm"
-                                      onClick={handleDownload}
-                                      style={{ fontSize: '11px', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                                    >
-                                      <Download size={12} /> Tải ảnh
-                                    </button>
-                                  )}
-                                </div>
-                                {fileUrl && (
-                                  <div style={{ textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '8px' }}>
-                                    <img src={fileUrl} alt={fileName} style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', objectFit: 'contain' }} />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                <FileText size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                                <span style={{ fontSize: '12px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  {fileName} {fileSize && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>({fileSize})</span>}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={handleDownload}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '4px 10px', flexShrink: 0 }}
-                              >
-                                <Download size={12} /> Tải về
-                              </button>
-                            </div>
-                          );
-                        })}
+                      <div>
+                        {isPending && <span className="badge badge-pending">CHỜ DUYỆT</span>}
+                        {isApproved && <span className="badge badge-success">ĐÃ DUYỆT</span>}
+                        {isRejected && <span className="badge badge-blocked">BỊ TỪ CHỐI</span>}
+                        {isCancelled && <span className="badge badge-blocked" style={{ filter: 'grayscale(0.6)' }}>ĐÃ HỦỶ</span>}
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
-            )}
 
-            {activeModalTab === 'participants' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <div className="search-input-wrapper" style={{ flex: 1, minWidth: '180px' }}>
-                    <Search className="search-icon" size={16} />
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="Tìm theo tên, MSSV..."
-                      value={participantSearch}
-                      onChange={e => setParticipantSearch(e.target.value)}
-                      style={{ padding: '6px 12px 6px 36px', fontSize: '12px' }}
-                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.03)', marginTop: '14px', paddingTop: '10px' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ padding: '6px 14px' }}
+                        onClick={() => setSelectedEventId(eId)}
+                      >
+                        <Eye size={14} style={{ marginRight: '6px' }} /> Xem chi tiết
+                      </button>
+                      {!isCancelled && (
+                        <>
+                          <button
+                            className="btn btn-sm"
+                            title="Hủy sự kiện"
+                            style={{ padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
+                            onClick={() => setCancelTargetId(eId)}
+                          >
+                            <XCircle size={14} /> Hủy
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    Tổng: <strong>{participants.length}</strong> tham gia (Manager đã duyệt: <strong>{participants.filter(p => getParticipantEvidenceStatus(p).isManagerApproved).length}</strong>)
-                  </div>
-                </div>
-
-                {loadingParticipants ? (
-                  <div className="empty-state-view" style={{ padding: '20px' }}>
-                    <span className="login-spinner" style={{ width: '24px', height: '24px' }} />
-                    <p style={{ fontSize: '12px', marginTop: '8px' }}>Đang tải danh sách tham gia...</p>
-                  </div>
-                ) : participants.length === 0 ? (
-                  <div className="empty-state-view" style={{ padding: '20px' }}>
-                    <Users className="empty-state-icon" style={{ width: '32px', height: '32px' }} />
-                    <p style={{ fontSize: '13px' }}>Chưa có sinh viên nào đăng ký tham gia sự kiện này.</p>
-                  </div>
-                ) : (
-                  <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                    <table className="data-table" style={{ width: '100%', fontSize: '12px' }}>
-                      <thead>
-                        <tr>
-                          <th>STT</th>
-                          <th>Họ và Tên</th>
-                          <th>MSSV</th>
-                          <th>Vai trò</th>
-                          <th>Trạng thái Minh chứng</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {participants
-                          .filter(p => {
-                            const q = participantSearch.toLowerCase();
-                            return !q || (p.fullName || p.name || '').toLowerCase().includes(q) || (p.studentId || p.studentCode || '').toLowerCase().includes(q);
-                          })
-                          .map((p, idx) => {
-                            const evInfo = getParticipantEvidenceStatus(p);
-                            return (
-                              <tr key={p.participantId || p.id || idx}>
-                                <td>{idx + 1}</td>
-                                <td style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{p.fullName || p.name || 'Sinh viên'}</td>
-                                <td>{p.studentId || p.studentCode || 'N/A'}</td>
-                                <td>{p.roleInEvent || 'Thành viên'}</td>
-                                <td>
-                                  <span
-                                    className="badge"
-                                    style={{
-                                      background: evInfo.isManagerApproved ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
-                                      color: evInfo.color,
-                                      border: `1px solid ${evInfo.color}40`,
-                                      fontSize: '11px',
-                                      padding: '2px 8px',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px'
-                                    }}
-                                  >
-                                    {evInfo.isManagerApproved ? <CheckCircle size={10} /> : null}
-                                    {evInfo.label}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setSelectedEventId(null)}>Đóng</button>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
-      )}
-
-      {/* MODAL: LẬP KẾ HOẠCH SỰ KIỆN MỚI */}
-      {showCreateModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '580px', width: '92%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><Plus size={18} style={{ marginRight: '6px' }} /> Lập kế hoạch sự kiện mới</h3>
-              <button className="modal-close" onClick={() => setShowCreateModal(false)}><X size={18} /></button>
-            </div>
-
-            <form onSubmit={handleCreateEvent} noValidate style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div className="form-group">
-                <label>Tên chương trình / sự kiện <span style={{ color: 'var(--error, #ef4444)' }}>*</span></label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={newEvent.eventName}
-                  onChange={e => {
-                    setNewEvent({ ...newEvent, eventName: e.target.value });
-                    if (errors.eventName) setErrors(prev => ({ ...prev, eventName: null }));
-                  }}
-                  placeholder="Workshop, Đại hội, Teambuilding..."
-                />
-                {errors.eventName && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.eventName}</span>}
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Thời gian bắt đầu <span style={{ color: 'var(--error, #ef4444)' }}>*</span></label>
-                  <VietnameseDateTimePicker
-                    value={newEvent.startTime}
-                    onChange={val => handleStartTimeChange(val)}
-                    onBlur={val => handleStartTimeChange(val)}
-                    error={!!errors.startTime}
-                    placeholder="dd/mm/yyyy --:--"
-                  />
-                  {errors.startTime && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.startTime}</span>}
-                </div>
-                <div className="form-group">
-                  <label>Thời gian kết thúc</label>
-                  <VietnameseDateTimePicker
-                    value={newEvent.endTime}
-                    min={newEvent.startTime || undefined}
-                    onChange={val => handleEndTimeChange(val)}
-                    onBlur={val => handleEndTimeChange(val)}
-                    error={!!errors.endTime}
-                    placeholder="dd/mm/yyyy --:--"
-                  />
-                  {errors.endTime && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.endTime}</span>}
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Ngân sách dự trù (VNĐ) <span style={{ color: 'var(--error, #ef4444)' }}>*</span></label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="input-field"
-                    value={newEvent.planBudget}
-                    onChange={e => {
-                      const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                      setNewEvent({ ...newEvent, planBudget: cleaned });
-                      if (errors.planBudget) setErrors(prev => ({ ...prev, planBudget: null }));
-                    }}
-                    placeholder="1500000"
-                  />
-                  {errors.planBudget && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.planBudget}</span>}
-                </div>
-                <div className="form-group">
-                  <label>Số lượng tham gia dự kiến</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="input-field"
-                    value={newEvent.targetParticipants}
-                    onChange={e => {
-                      const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                      setNewEvent({ ...newEvent, targetParticipants: cleaned });
-                      if (errors.targetParticipants) setErrors(prev => ({ ...prev, targetParticipants: null }));
-                    }}
-                    placeholder="50"
-                  />
-                  {errors.targetParticipants && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.targetParticipants}</span>}
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Địa điểm tổ chức <span style={{ color: 'var(--error, #ef4444)' }}>*</span></label>
-                <select
-                  className="select-field"
-                  value={newEvent.location}
-                  onChange={e => {
-                    setNewEvent({ ...newEvent, location: e.target.value });
-                    if (errors.location) setErrors(prev => ({ ...prev, location: null }));
-                  }}
-                >
-                  <option value="">-- Chọn địa điểm --</option>
-                  <option value="Sân thượng">Sân thượng (~ 100 - 150 người)</option>
-                  <option value="Hội trường A">Hội trường A (~ 200 - 300 người)</option>
-                  <option value="Hội trường B">Hội trường B (~ 150 - 300 người)</option>
-                  <option value="Sảnh trống đồng">Sảnh trống đồng (~ 50 - 100 người)</option>
-                  <option value="Sân trường 1">Sân trường 1 (~ 300 - 400 người)</option>
-                  <option value="Sân trường 2">Sân trường 2 (~ 300 - 400 người)</option>
-                  <option value="Sân bóng">Sân bóng (~ 100 - 150 người)</option>
-                </select>
-                {errors.location && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.location}</span>}
-              </div>
-
-              <div className="form-group">
-                <label>Mô tả ngắn gọn chương trình</label>
-                <textarea
-                  className="textarea-field"
-                  value={newEvent.description}
-                  onChange={e => {
-                    setNewEvent({ ...newEvent, description: e.target.value });
-                    if (errors.description) setErrors(prev => ({ ...prev, description: null }));
-                  }}
-                  placeholder="Nội dung, kế hoạch chạy truyền thông..."
-                  rows={2}
-                />
-                {errors.description && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{errors.description}</span>}
-              </div>
-
-              <div className="form-group">
-                <label>Đính kèm tài liệu (Files, tuỳ chọn)</label>
-                <input
-                  type="file"
-                  className="input-field"
-                  multiple
-                  onChange={e => setNewEvent({ ...newEvent, files: e.target.files })}
-                  style={{ padding: '8px' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <span className="login-spinner" />
-                  ) : (
-                    <><Calendar size={16} /> Lên lịch &amp; Đăng ký sự kiện</>
-                  )}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Hủy</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CONFIRM: HỦY SỰ KIỆN */}
-      {cancelTargetId && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title" style={{ color: 'var(--error)' }}><XCircle size={16} style={{ marginRight: '6px' }} /> Xác nhận Hủy Sự kiện</h3>
-              <button className="modal-close" onClick={() => setCancelTargetId(null)}><X size={18} /></button>
-            </div>
-            <p style={{ fontSize: '13px', lineHeight: 1.6, margin: '16px 0' }}>
-              Bạn có chắc chắn muốn hủy sự kiện này không? Hành động này <strong>không thể hoàn tác</strong>.
-            </p>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                className="btn btn-danger"
-                style={{ flex: 1 }}
-                onClick={handleCancelEvent}
-                disabled={isCancelling}
-              >
-                {isCancelling ? 'Đang hủy...' : 'Đồng ý Hủy sự kiện'}
-              </button>
-              <button className="btn btn-secondary" onClick={() => setCancelTargetId(null)}>Không</button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

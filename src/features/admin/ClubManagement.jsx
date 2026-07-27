@@ -215,6 +215,188 @@ export default function ClubManagement({ triggerNotification }) {
     }
   };
 
+  // ── EDIT VIEW ──────────────────────────────────────────────────────────────
+  if (showEditModal && editingClub) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowEditModal(false)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Danh sách Sự kiện
+          </button>
+        </div>
+        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><Edit2 size={18} style={{ marginRight: '6px' }} /> Chỉnh sửa thông tin CLB</h3>
+          </div>
+          <form onSubmit={handleUpdateClub} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Tên Câu Lạc Bộ *</label>
+              <input type="text" className="input-field" value={editForm.clubName} onChange={e => setEditForm({ ...editForm, clubName: e.target.value })} required />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Mã CLB (Club Code)</label>
+              <input type="text" className="input-field" value={editForm.clubCode} onChange={e => setEditForm({ ...editForm, clubCode: e.target.value })} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Link Fanpage Facebook</label>
+              <input type="text" className="input-field" value={editForm.fanpageUrl} onChange={e => setEditForm({ ...editForm, fanpageUrl: e.target.value })} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Ngày thành lập (Ngày / Tháng / Năm)</label>
+              <VietnameseDatePicker value={editForm.foundedDate} onChange={val => setEditForm({ ...editForm, foundedDate: val })} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Mô tả hoạt động CLB</label>
+              <textarea className="textarea-field" rows={4} value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} disabled={isSubmitting}>
+                <Save size={16} /> {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+              <button type="button" className="btn btn-secondary" style={{ padding: '8px 20px' }} onClick={() => setShowEditModal(false)}>Hủy</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ── DETAIL VIEW ────────────────────────────────────────────────────────────
+  if (showDetailModal) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => { setShowDetailModal(false); setClubDetail(null); setClubStats(null); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Danh sách Sự kiện
+          </button>
+        </div>
+        <div className="glass-card">
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><Landmark size={18} style={{ marginRight: '6px' }} /> Chi tiết Câu lạc bộ</h3>
+          </div>
+          {loadingDetail ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="login-spinner" style={{ margin: '0 auto', width: '32px', height: '32px' }}></div>
+              <p style={{ marginTop: '12px', color: 'var(--text-muted)' }}>Đang tải thông tin...</p>
+            </div>
+          ) : clubDetail ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '20px' }}>
+                {clubDetail.logoImage ? (
+                  <img src={clubDetail.logoImage} alt="Logo" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} onError={e => { e.target.style.display = 'none'; }} />
+                ) : (
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg,var(--primary),var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '32px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    {(clubDetail.clubName || clubDetail.name || 'C').charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <h4 style={{ fontSize: '22px', color: 'var(--text-heading)', fontWeight: 700, margin: '0 0 6px 0' }}>{clubDetail.clubName || clubDetail.name}</h4>
+                  <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', display: 'inline-block', fontSize: '13px' }}>
+                    Mã CLB: <strong style={{ color: 'var(--text-main)' }}>{clubDetail.clubCode || clubDetail.code || 'N/A'}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Club Stats */}
+              {clubStats && (
+                <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '20px' }}>
+                  <div style={{ fontSize: '14px', color: 'var(--text-heading)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                    <BarChart2 size={16} /> Thống kê hoạt động
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                    {[
+                      ['Thành viên', clubStats.totalMembers ?? clubStats.memberCount ?? '—'],
+                      ['Sự kiện đã duyệt', clubStats.approvedEvents ?? clubStats.totalApprovedEvents ?? '—'],
+                      ['Sự kiện chờ duyệt', clubStats.pendingEvents ?? clubStats.totalPendingEvents ?? '—'],
+                      ['Minh chứng chờ duyệt', clubStats.pendingEvidences ?? clubStats.totalPendingEvidences ?? '—'],
+                    ].map(([label, val]) => (
+                      <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '10px', padding: '16px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{label}</div>
+                        <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-heading)', marginTop: '4px' }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {[
+                  ['Ngày thành lập', clubDetail.foundedDate ? new Date(clubDetail.foundedDate).toLocaleDateString('vi-VN') : 'N/A'],
+                  ['Người quản lý (Student ID)', clubDetail.managerStudentId || clubDetail.leaderStudentId || clubDetail.managerUserId || clubDetail.leaderUserId || 'N/A'],
+                  ['Fanpage Facebook', clubDetail.fanpageUrl ? <a href={clubDetail.fanpageUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>{clubDetail.fanpageUrl}</a> : 'N/A'],
+                  ['Trạng thái', (() => {
+                    const isDetailActive = clubDetail.status === 'Active' || clubDetail.status === 'Hoạt động' || clubDetail.status === 'Đang hoạt động' || clubDetail.status === 'active';
+                    return <span className={`badge ${isDetailActive ? 'badge-active' : 'badge-blocked'}`}>{isDetailActive ? 'Đang hoạt động' : 'Tạm dừng'}</span>;
+                  })()],
+                  ['Mô tả hoạt động', clubDetail.description || 'Không có mô tả chi tiết']
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '12px' }}>
+                    <span style={{ minWidth: '180px', fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: '14px', color: 'var(--text-main)', wordBreak: 'break-all' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', padding: '20px 0', textAlign: 'center' }}>Không tải được thông tin câu lạc bộ.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── DISSOLVE CONFIRM VIEW ──────────────────────────────────────────────────
+  if (dissolveConfirm) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setDissolveConfirm(null)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Danh sách Sự kiện
+          </button>
+        </div>
+        <div className="glass-card" style={{ maxWidth: '500px', margin: '0 auto' }}>
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title" style={{ color: 'var(--error)' }}><Trash2 size={18} style={{ marginRight: '6px' }} /> Xác nhận Giải thể Câu lạc bộ</h3>
+          </div>
+          <div style={{ padding: '10px 0' }}>
+            <p style={{ color: 'var(--text-main)', marginBottom: '12px', fontSize: '14px' }}>
+              Bạn có chắc chắn muốn <strong style={{ color: 'var(--error)' }}>giải thể</strong> câu lạc bộ:
+            </p>
+            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '16px', marginBottom: '20px', textAlign: 'center' }}>
+              <strong style={{ color: 'var(--text-heading)', fontSize: '16px' }}>{dissolveConfirm.clubName || dissolveConfirm.name}</strong>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.6 }}>
+              ⚠️ Thao tác này sẽ đổi trạng thái CLB sang <strong>"Giải thể"</strong>. Toàn bộ lịch sử dữ liệu vẫn được giữ lại, tuy nhiên người dùng sẽ không thể thao tác thêm với CLB này. Hành động này không thể hoàn tác sau khi xác nhận.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                className="btn btn-danger"
+                style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px' }}
+                onClick={handleDissolve}
+                disabled={dissolving}
+              >
+                <Trash2 size={16} /> {dissolving ? 'Đang xử lý...' : 'Đồng ý Giải thể'}
+              </button>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => setDissolveConfirm(null)} disabled={dissolving}>Không, quay lại</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* View Switcher */}
@@ -435,162 +617,6 @@ export default function ClubManagement({ triggerNotification }) {
         </div>
       )}
 
-      {/* EDIT CLUB MODAL */}
-      {showEditModal && editingClub && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '500px', width: '90%' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><Edit2 size={18} style={{ marginRight: '6px' }} /> Chỉnh sửa thông tin CLB</h3>
-              <button className="modal-close" onClick={() => setShowEditModal(false)}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleUpdateClub} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-
-              <div className="form-group">
-                <label>Tên Câu Lạc Bộ *</label>
-                <input type="text" className="input-field" value={editForm.clubName} onChange={e => setEditForm({ ...editForm, clubName: e.target.value })} required />
-              </div>
-
-              <div className="form-group">
-                <label>Mã CLB (Club Code)</label>
-                <input type="text" className="input-field" value={editForm.clubCode} onChange={e => setEditForm({ ...editForm, clubCode: e.target.value })} />
-              </div>
-
-              <div className="form-group">
-                <label>Link Fanpage Facebook</label>
-                <input type="text" className="input-field" value={editForm.fanpageUrl} onChange={e => setEditForm({ ...editForm, fanpageUrl: e.target.value })} />
-              </div>
-
-              <div className="form-group">
-                <label>Ngày thành lập (Ngày / Tháng / Năm)</label>
-                <VietnameseDatePicker value={editForm.foundedDate} onChange={val => setEditForm({ ...editForm, foundedDate: val })} />
-              </div>
-
-              <div className="form-group">
-                <label>Mô tả hoạt động CLB</label>
-                <textarea className="textarea-field" rows={3} value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} disabled={isSubmitting}>
-                  <Save size={16} /> {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Hủy</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* DETAIL CLUB MODAL */}
-      {showDetailModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '580px', width: '90%' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><Landmark size={18} style={{ marginRight: '6px' }} /> Chi tiết Câu lạc bộ</h3>
-              <button className="modal-close" onClick={() => { setShowDetailModal(false); setClubDetail(null); setClubStats(null); }}><X size={18} /></button>
-            </div>
-            {loadingDetail ? (
-              <div style={{ textAlign: 'center', padding: '32px' }}>
-                <div className="login-spinner" style={{ margin: '0 auto' }}></div>
-              </div>
-            ) : clubDetail ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-                  {clubDetail.logoImage ? (
-                    <img src={clubDetail.logoImage} alt="Logo" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; }} />
-                  ) : (
-                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg,var(--primary),var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '24px' }}>
-                      {(clubDetail.clubName || clubDetail.name || 'C').charAt(0)}
-                    </div>
-                  )}
-                  <div>
-                    <h4 style={{ fontSize: '18px', color: 'var(--text-heading)', fontWeight: 700 }}>{clubDetail.clubName || clubDetail.name}</h4>
-                    <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', marginTop: '4px', display: 'inline-block' }}>
-                      Mã: {clubDetail.clubCode || clubDetail.code || 'N/A'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Club Stats */}
-                {clubStats && (
-                  <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <BarChart2 size={13} /> Thống kê hoạt động
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                      {[
-                        ['Thành viên', clubStats.totalMembers ?? clubStats.memberCount ?? '—'],
-                        ['Sự kiện đã duyệt', clubStats.approvedEvents ?? clubStats.totalApprovedEvents ?? '—'],
-                        ['Sự kiện chờ duyệt', clubStats.pendingEvents ?? clubStats.totalPendingEvents ?? '—'],
-                        ['Minh chứng chờ duyệt', clubStats.pendingEvidences ?? clubStats.totalPendingEvidences ?? '—'],
-                      ].map(([label, val]) => (
-                        <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '10px 12px', border: '1px solid var(--border)' }}>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{label}</div>
-                          <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-heading)', marginTop: '2px' }}>{val}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {[
-                    ['Ngày thành lập', clubDetail.foundedDate ? new Date(clubDetail.foundedDate).toLocaleDateString('vi-VN') : 'N/A'],
-                    ['Người quản lý (Student ID)', clubDetail.managerStudentId || clubDetail.leaderStudentId || clubDetail.managerUserId || clubDetail.leaderUserId || 'N/A'],
-                    ['Fanpage Facebook', clubDetail.fanpageUrl ? <a href={clubDetail.fanpageUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>{clubDetail.fanpageUrl}</a> : 'N/A'],
-                    ['Trạng thái', (() => {
-                      const isDetailActive = clubDetail.status === 'Active' || clubDetail.status === 'Hoạt động' || clubDetail.status === 'Đang hoạt động' || clubDetail.status === 'active';
-                      return <span className={`badge ${isDetailActive ? 'badge-active' : 'badge-blocked'}`}>{isDetailActive ? 'Đang hoạt động' : 'Tạm dừng'}</span>;
-                    })()],
-                    ['Mô tả hoạt động', clubDetail.description || 'N/A']
-                  ].map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                      <span style={{ minWidth: '165px', fontSize: '12px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-main)', wordBreak: 'break-all' }}>{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', padding: '16px 0' }}>Không tải được thông tin câu lạc bộ.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* DISSOLVE CONFIRM MODAL */}
-      {dissolveConfirm && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '420px', width: '90%' }}>
-            <div className="modal-header">
-              <h3 className="modal-title" style={{ color: 'var(--error)' }}><Trash2 size={18} style={{ marginRight: '6px' }} /> Giải thể Câu lạc bộ</h3>
-              <button className="modal-close" onClick={() => setDissolveConfirm(null)}><X size={18} /></button>
-            </div>
-            <div style={{ padding: '16px 0' }}>
-              <p style={{ color: 'var(--text-main)', marginBottom: '12px' }}>
-                Bạn có chắc chắn muốn <strong style={{ color: 'var(--error)' }}>giải thể</strong> câu lạc bộ:
-              </p>
-              <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
-                <strong style={{ color: 'var(--text-heading)', fontSize: '15px' }}>{dissolveConfirm.clubName || dissolveConfirm.name}</strong>
-              </div>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-                ⚠️ Thao tác này sẽ đổi trạng thái CLB sang <strong>"Giải thể"</strong>. Toàn bộ lịch sử dữ liệu vẫn được giữ lại. Không thể hoàn tác sau khi xác nhận.
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className="btn btn-danger"
-                  style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  onClick={handleDissolve}
-                  disabled={dissolving}
-                >
-                  <Trash2 size={14} /> {dissolving ? 'Đang giải thể...' : 'Xác nhận Giải thể'}
-                </button>
-                <button className="btn btn-secondary" onClick={() => setDissolveConfirm(null)} disabled={dissolving}>Hủy</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

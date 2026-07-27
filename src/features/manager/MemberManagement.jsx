@@ -141,6 +141,60 @@ export default function MemberManagement({ selectedClubId, triggerNotification }
   const activeCount = mappedMembers.filter(m => m.status === 'Active' || m.status === 'Open').length;
   const resignedCount = mappedMembers.filter(m => m.status === 'Resigned' || m.status === 'Closed' || m.status === 'Removed').length;
 
+  // ── MEMBER DETAIL VIEW ─────────────────────────────────────────────────────
+  if (showDetailModal) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => { setShowDetailModal(false); setMemberDetail(null); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Quản lý Thành viên
+          </button>
+        </div>
+        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><UserCheck size={18} style={{ marginRight: '6px' }} /> Chi tiết Thành viên</h3>
+          </div>
+          {loadingDetail ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="login-spinner" style={{ margin: '0 auto', width: '32px', height: '32px' }}></div>
+              <p style={{ marginTop: '12px', color: 'var(--text-muted)' }}>Đang tải thông tin...</p>
+            </div>
+          ) : memberDetail ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {(() => {
+                const detailStudentId = memberDetail.studentId || memberDetail.userId || '';
+                const isDetailLeader = memberDetail.role === 'Leader' || memberDetail.role === 'Trưởng CLB';
+                const displayDetailRole = isDetailLeader ? 'Trưởng CLB' : 'Thành viên';
+                
+                return [
+                  ['MSSV', detailStudentId || 'N/A'],
+                  ['Họ & Tên', memberDetail.fullName || memberDetail.name || 'N/A'],
+                  ['Email', memberDetail.email || 'N/A'],
+                  ['Khóa', memberDetail.cohort || 'N/A'],
+                  ['Vai trò trong CLB', displayDetailRole],
+                  ['Trạng thái', memberDetail.status || 'N/A'],
+                  ['Lý do tham gia', memberDetail.joinReason || 'N/A'],
+                  ['Mục tiêu cá nhân', memberDetail.personalGoal || 'N/A'],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '12px' }}>
+                    <span style={{ minWidth: '150px', fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: '14px', color: 'var(--text-main)', wordBreak: 'break-word', fontWeight: 500 }} dangerouslySetInnerHTML={{ __html: String(value) }} />
+                  </div>
+                ));
+              })()}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', padding: '20px 0', textAlign: 'center' }}>Không tải được thông tin thành viên.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="member-management-container">
       <div className="stats-grid">
@@ -290,48 +344,6 @@ export default function MemberManagement({ selectedClubId, triggerNotification }
         </div>
       </div>
 
-      {/* MODAL: CHI TIẾT THÀNH VIÊN */}
-      {showDetailModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '480px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><UserCheck size={16} style={{ marginRight: '6px' }} /> Chi tiết Thành viên</h3>
-              <button className="modal-close" onClick={() => { setShowDetailModal(false); setMemberDetail(null); }}><X size={18} /></button>
-            </div>
-            {loadingDetail ? (
-              <div style={{ textAlign: 'center', padding: '32px' }}>
-                <div className="login-spinner" style={{ margin: '0 auto' }}></div>
-              </div>
-            ) : memberDetail ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                {(() => {
-                  const detailStudentId = memberDetail.studentId || memberDetail.userId || '';
-                  const isDetailLeader = memberDetail.role === 'Leader' || memberDetail.role === 'Trưởng CLB';
-                  const displayDetailRole = isDetailLeader ? 'Trưởng CLB' : 'Thành viên';
-                  
-                  return [
-                    ['MSSV', detailStudentId || 'N/A'],
-                    ['Họ &amp; Tên', memberDetail.fullName || memberDetail.name || 'N/A'],
-                    ['Email', memberDetail.email || 'N/A'],
-                    ['Khóa', memberDetail.cohort || 'N/A'],
-                    ['Vai trò trong CLB', displayDetailRole],
-                    ['Trạng thái', memberDetail.status || 'N/A'],
-                    ['Lý do tham gia', memberDetail.joinReason || 'N/A'],
-                    ['Mục tiêu cá nhân', memberDetail.personalGoal || 'N/A'],
-                  ].map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                      <span style={{ minWidth: '140px', fontSize: '12px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-main)', wordBreak: 'break-all' }} dangerouslySetInnerHTML={{ __html: String(value) }} />
-                    </div>
-                  ));
-                })()}
-              </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', padding: '16px 0' }}>Không tải được thông tin thành viên.</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -199,6 +199,148 @@ export default function ClubReportSubmission({ selectedClubId, triggerNotificati
     }
   };
 
+  // ── SUBMIT / EDIT REPORT VIEW ──────────────────────────────────────────────
+  if (showSubmitModal) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => { setShowSubmitModal(false); setSubmitSuccessMsg(null); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Báo cáo Hoạt động
+          </button>
+        </div>
+        
+        <div className="glass-card" style={{ maxWidth: '700px', margin: '0 auto' }}>
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><FileText size={18} style={{ marginRight: '6px' }} /> {editReportId ? 'Chỉnh sửa Báo cáo Hoạt động' : 'Nộp Báo cáo Hoạt động mới'}</h3>
+          </div>
+          
+          {submitSuccessMsg ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px 0', textAlign: 'center' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(34,197,94,0.1)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle size={36} />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-heading)', marginBottom: '8px' }}>{submitSuccessMsg.title}</h4>
+                <p style={{ fontSize: '14px', color: 'var(--text-muted)', maxWidth: '420px', lineHeight: 1.6 }}>{submitSuccessMsg.desc}</p>
+              </div>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={() => {
+                  setShowSubmitModal(false);
+                  setSubmitSuccessMsg(null);
+                }}
+                style={{ minWidth: '140px', marginTop: '12px' }}
+              >
+                Đóng
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmitReport} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Đợt báo cáo *</label>
+                <select 
+                  className="select-field"
+                  value={selectedPeriodId}
+                  onChange={e => {
+                    setSelectedPeriodId(e.target.value);
+                    if (formErrors.selectedPeriodId) setFormErrors(prev => ({ ...prev, selectedPeriodId: null }));
+                  }}
+                  disabled={!!editReportId}
+                  style={editReportId ? { opacity: 0.6 } : {}}
+                >
+                  <option value="">-- Chọn đợt báo cáo --</option>
+                  {periods.map(p => {
+                    const pId = p.reportPeriodId || p.id;
+                    const isAlreadySubmitted = reports.some(r => Number(r.reportPeriodId) === Number(pId));
+                    return (
+                      <option key={pId} value={pId} disabled={isAlreadySubmitted}>
+                        {p.periodName} (Hạn nộp: {p.deadline ? new Date(p.deadline).toLocaleDateString('vi-VN') : '—'}){isAlreadySubmitted ? ' - [Đã nộp]' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                {formErrors.selectedPeriodId && <span style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px', display: 'block' }}>{formErrors.selectedPeriodId}</span>}
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Tiêu đề báo cáo *</label>
+                <input 
+                  type="text"
+                  className="input-field"
+                  placeholder="Ví dụ: Báo cáo hoạt động JS Club tháng 6"
+                  value={reportTitle}
+                  onChange={e => {
+                    setReportTitle(e.target.value);
+                    if (formErrors.reportTitle) setFormErrors(prev => ({ ...prev, reportTitle: null }));
+                  }}
+                />
+                {formErrors.reportTitle && <span style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px', display: 'block' }}>{formErrors.reportTitle}</span>}
+              </div>
+
+               <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Số lượng sự kiện đã tổ chức *</label>
+                <input 
+                  type="text"
+                  className="input-field"
+                  value={totalEvents}
+                  onChange={e => {
+                    const cleanVal = e.target.value.replace(/[^0-9]/g, '');
+                    setTotalEvents(cleanVal);
+                    if (formErrors.totalEvents) setFormErrors(prev => ({ ...prev, totalEvents: null }));
+                  }}
+                />
+                {formErrors.totalEvents && <span style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px', display: 'block' }}>{formErrors.totalEvents}</span>}
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Số dư tài chính (VND) *</label>
+                <input 
+                  type="text"
+                  className="input-field"
+                  placeholder="Ví dụ: 5000000"
+                  value={financialBalance}
+                  onChange={e => {
+                    const cleanVal = e.target.value.replace(/[^0-9]/g, '');
+                    setFinancialBalance(cleanVal);
+                    if (formErrors.financialBalance) setFormErrors(prev => ({ ...prev, financialBalance: null }));
+                  }}
+                />
+                {formErrors.financialBalance && <span style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px', display: 'block' }}>{formErrors.financialBalance}</span>}
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Nội dung tóm tắt hoạt động *</label>
+                <textarea 
+                  className="textarea-field"
+                  placeholder="Mô tả tóm tắt các hoạt động, sự kiện chính đã triển khai..."
+                  rows={6}
+                  value={summaryContent}
+                  onChange={e => {
+                    setSummaryContent(e.target.value);
+                    if (formErrors.summaryContent) setFormErrors(prev => ({ ...prev, summaryContent: null }));
+                  }}
+                />
+                {formErrors.summaryContent && <span style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px', display: 'block' }}>{formErrors.summaryContent}</span>}
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                <button type="button" className="btn btn-secondary" style={{ padding: '10px 24px' }} onClick={() => { setShowSubmitModal(false); setSubmitSuccessMsg(null); }}>Đóng</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting} style={{ padding: '10px 24px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <Send size={16} /> {submitting ? 'Đang gửi...' : (editReportId ? 'Lưu thay đổi' : 'Nộp báo cáo')}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="user-management-container">
       {/* Top action row */}
@@ -287,136 +429,6 @@ export default function ClubReportSubmission({ selectedClubId, triggerNotificati
         )}
       </div>
 
-      {/* MODAL: SUBMIT / EDIT REPORT */}
-      {showSubmitModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '580px', width: '90%' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><FileText size={18} style={{ marginRight: '6px' }} /> {editReportId ? 'Chỉnh sửa Báo cáo Hoạt động' : 'Nộp Báo cáo Hoạt động mới'}</h3>
-              <button className="modal-close" onClick={() => { setShowSubmitModal(false); setSubmitSuccessMsg(null); }}><X size={18} /></button>
-            </div>
-            
-            {submitSuccessMsg ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '24px 0', textAlign: 'center' }}>
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(34,197,94,0.1)', color: 'var(--success, #22c55e)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <CheckCircle size={32} />
-                </div>
-                <div>
-                  <h4 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-heading)', marginBottom: '6px' }}>{submitSuccessMsg.title}</h4>
-                  <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', maxWidth: '380px', lineHeight: 1.5 }}>{submitSuccessMsg.desc}</p>
-                </div>
-                <button 
-                  type="button" 
-                  className="btn btn-primary btn-sm" 
-                  onClick={() => {
-                    setShowSubmitModal(false);
-                    setSubmitSuccessMsg(null);
-                  }}
-                  style={{ minWidth: '120px', marginTop: '8px' }}
-                >
-                  Đóng
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmitReport} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-                <div className="form-group">
-                  <label>Đợt báo cáo *</label>
-                  <select 
-                    className="select-field"
-                    value={selectedPeriodId}
-                    onChange={e => {
-                      setSelectedPeriodId(e.target.value);
-                      if (formErrors.selectedPeriodId) setFormErrors(prev => ({ ...prev, selectedPeriodId: null }));
-                    }}
-                    disabled={!!editReportId}
-                    style={editReportId ? { opacity: 0.6 } : {}}
-                  >
-                    <option value="">-- Chọn đợt báo cáo --</option>
-                    {periods.map(p => {
-                      const pId = p.reportPeriodId || p.id;
-                      const isAlreadySubmitted = reports.some(r => Number(r.reportPeriodId) === Number(pId));
-                      return (
-                        <option key={pId} value={pId} disabled={isAlreadySubmitted}>
-                          {p.periodName} (Hạn nộp: {p.deadline ? new Date(p.deadline).toLocaleDateString('vi-VN') : '—'}){isAlreadySubmitted ? ' - [Đã nộp]' : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  {formErrors.selectedPeriodId && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{formErrors.selectedPeriodId}</span>}
-                </div>
-
-                <div className="form-group">
-                  <label>Tiêu đề báo cáo *</label>
-                  <input 
-                    type="text"
-                    className="input-field"
-                    placeholder="Ví dụ: Báo cáo hoạt động JS Club tháng 6"
-                    value={reportTitle}
-                    onChange={e => {
-                      setReportTitle(e.target.value);
-                      if (formErrors.reportTitle) setFormErrors(prev => ({ ...prev, reportTitle: null }));
-                    }}
-                  />
-                  {formErrors.reportTitle && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{formErrors.reportTitle}</span>}
-                </div>
-
-                 <div className="form-group">
-                  <label>Số lượng sự kiện đã tổ chức *</label>
-                  <input 
-                    type="text"
-                    className="input-field"
-                    value={totalEvents}
-                    onChange={e => {
-                      const cleanVal = e.target.value.replace(/[^0-9]/g, '');
-                      setTotalEvents(cleanVal);
-                      if (formErrors.totalEvents) setFormErrors(prev => ({ ...prev, totalEvents: null }));
-                    }}
-                  />
-                  {formErrors.totalEvents && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{formErrors.totalEvents}</span>}
-                </div>
-
-                <div className="form-group">
-                  <label>Số dư tài chính (VND) *</label>
-                  <input 
-                    type="text"
-                    className="input-field"
-                    placeholder="Ví dụ: 5000000"
-                    value={financialBalance}
-                    onChange={e => {
-                      const cleanVal = e.target.value.replace(/[^0-9]/g, '');
-                      setFinancialBalance(cleanVal);
-                      if (formErrors.financialBalance) setFormErrors(prev => ({ ...prev, financialBalance: null }));
-                    }}
-                  />
-                  {formErrors.financialBalance && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{formErrors.financialBalance}</span>}
-                </div>
-
-                <div className="form-group">
-                  <label>Nội dung tóm tắt hoạt động *</label>
-                  <textarea 
-                    className="textarea-field"
-                    placeholder="Mô tả tóm tắt các hoạt động, sự kiện chính đã triển khai..."
-                    rows={4}
-                    value={summaryContent}
-                    onChange={e => {
-                      setSummaryContent(e.target.value);
-                      if (formErrors.summaryContent) setFormErrors(prev => ({ ...prev, summaryContent: null }));
-                    }}
-                  />
-                  {formErrors.summaryContent && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{formErrors.summaryContent}</span>}
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setShowSubmitModal(false); setSubmitSuccessMsg(null); }}>Đóng</button>
-                  <button type="submit" className="btn btn-primary btn-sm" disabled={submitting} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <Send size={14} /> {submitting ? 'Đang gửi...' : (editReportId ? 'Lưu thay đổi' : 'Nộp báo cáo')}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

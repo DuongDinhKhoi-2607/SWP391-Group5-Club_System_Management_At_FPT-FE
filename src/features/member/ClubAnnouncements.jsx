@@ -32,7 +32,7 @@ export default function ClubAnnouncements({ selectedClubId, triggerNotification,
   const loadAnnouncements = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getMyNotifications();
+      const data = await getMyNotifications(selectedClubId);
       const list = Array.isArray(data) ? data : (data?.data ?? []);
       // Lọc thông báo theo CLB hiện tại hoặc thông báo hệ thống (không có clubId)
       const filtered = list.filter(n =>

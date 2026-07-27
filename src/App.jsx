@@ -231,19 +231,19 @@ function MemberDashboard({ triggerNotification }) {
       {activeTab === 'club-announcements' && <ClubAnnouncementsPage selectedClubId={selectedClubId} triggerNotification={triggerNotification} isLeader={isLeader} />}
 
       {/* Leader-only tabs */}
-      {isLeader && activeTab === 'member-management' && (
+      {activeTab === 'member-management' && (
         <MemberManagementPage selectedClubId={selectedClubId} triggerNotification={triggerNotification} />
       )}
-      {isLeader && activeTab === 'event-manager' && (
+      {activeTab === 'event-manager' && (
         <EventManagerPage selectedClubId={selectedClubId} triggerNotification={triggerNotification} />
       )}
-      {isLeader && activeTab === 'evidence-review' && (
+      {activeTab === 'evidence-review' && (
         <EvidenceApprovalPage triggerNotification={triggerNotification} selectedClubId={selectedClubId} />
       )}
-      {isLeader && activeTab === 'club-report' && (
+      {activeTab === 'club-report' && (
         <ClubReportPage selectedClubId={selectedClubId} triggerNotification={triggerNotification} />
       )}
-      {isLeader && activeTab === 'document-upload' && (
+      {activeTab === 'document-upload' && (
         <DocumentArchivePage selectedClubId={selectedClubId} triggerNotification={triggerNotification} readOnly={false} />
       )}
     </DashboardLayout>

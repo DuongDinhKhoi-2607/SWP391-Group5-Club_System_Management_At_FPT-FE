@@ -29,8 +29,12 @@ export async function getNotifications() {
  * Lấy danh sách thông báo của tôi (cá nhân)
  * GET /api/notifications/my
  */
-export async function getMyNotifications() {
-  const response = await apiClient.get('/api/notifications/my');
+export async function getMyNotifications(clubId) {
+  let url = '/api/notifications/my';
+  if (clubId) {
+    url += `?clubId=${clubId}`;
+  }
+  const response = await apiClient.get(url);
   return response.data;
 }
 

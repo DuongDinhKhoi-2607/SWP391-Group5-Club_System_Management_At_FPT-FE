@@ -148,6 +148,153 @@ export default function UserManagement({ triggerNotification }) {
     return matchesSearch && (role === 'ADMIN' || role === 'MANAGER');
   });
 
+  // ── CREATE STAFF VIEW ──────────────────────────────────────────────────────
+  if (showCreateModal) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowCreateModal(false)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Quản lý Người dùng
+          </button>
+        </div>
+        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><UserPlus size={18} style={{ marginRight: '6px' }} /> Thêm Tài khoản Cán bộ</h3>
+          </div>
+          <form onSubmit={handleCreateUser} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Username *</label>
+              <input
+                type="text"
+                className="input-field"
+                value={createForm.username}
+                onChange={e => {
+                  setCreateForm({ ...createForm, username: e.target.value });
+                  if (formErrors.username) setFormErrors(prev => ({ ...prev, username: null }));
+                }}
+                placeholder="Ví dụ: manager02"
+              />
+              {formErrors.username && <span style={{ fontSize: '12px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block', fontWeight: 500 }}>{formErrors.username}</span>}
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Mật khẩu khởi tạo *</label>
+              <input
+                type="password"
+                className="input-field"
+                value={createForm.password}
+                onChange={e => {
+                  setCreateForm({ ...createForm, password: e.target.value });
+                  if (formErrors.password) setFormErrors(prev => ({ ...prev, password: null }));
+                }}
+                placeholder="Nhập mật khẩu..."
+              />
+              {formErrors.password && <span style={{ fontSize: '12px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block', fontWeight: 500 }}>{formErrors.password}</span>}
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Vai trò hệ thống</label>
+              <select
+                className="select-field"
+                value={createForm.role}
+                onChange={e => setCreateForm({ ...createForm, role: e.target.value })}
+              >
+                <option value="MANAGER">MANAGER (Quản lý cấp trường)</option>
+                <option value="ADMIN">ADMIN (Quản trị hệ thống)</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '10px' }}>Tạo tài khoản</button>
+              <button type="button" className="btn btn-secondary" style={{ padding: '10px 20px' }} onClick={() => setShowCreateModal(false)}>Hủy</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ── USER DETAIL VIEW ───────────────────────────────────────────────────────
+  if (showDetailModal) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => { setShowDetailModal(false); setUserDetail(null); setActivityHistory([]); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Quản lý Người dùng
+          </button>
+        </div>
+        <div className="glass-card">
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><Eye size={18} style={{ marginRight: '6px' }} /> Chi tiết Người dùng & Lịch sử</h3>
+          </div>
+          {loadingDetail ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="login-spinner" style={{ margin: '0 auto', width: '32px', height: '32px' }}></div>
+              <p style={{ marginTop: '12px', color: 'var(--text-muted)' }}>Đang tải thông tin...</p>
+            </div>
+          ) : userDetail ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '15px', color: 'var(--text-heading)', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '4px' }}>Thông tin cơ bản</h4>
+                {[
+                  ['Username', userDetail.username || 'N/A'],
+                  ['Họ & Tên', userDetail.fullName || userDetail.name || 'N/A'],
+                  ['Email', userDetail.schoolEmail || userDetail.email || 'N/A'],
+                  ['Vai trò', (userDetail.role || userDetail.systemRole || 'N/A').toUpperCase()],
+                  ['Trạng thái', userDetail.status === 'Active' ? 'Hoạt động' : userDetail.status || 'N/A'],
+                  ['MSSV', userDetail.studentId || 'N/A'],
+                  ['Khóa', userDetail.cohort || 'N/A'],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '10px' }}>
+                    <span style={{ minWidth: '100px', fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: '14px', color: 'var(--text-main)', wordBreak: 'break-all', fontWeight: 500 }}>
+                      {label === 'Trạng thái' ? (
+                        <span className={`badge ${value === 'Hoạt động' ? 'badge-active' : 'badge-blocked'}`}>{value}</span>
+                      ) : value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Activity History Timeline */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(0,0,0,0.1)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <h4 style={{ fontSize: '15px', color: 'var(--text-heading)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  📅 Lịch sử Hoạt động <span className="badge" style={{ fontSize: '11px' }}>{activityHistory.length}</span>
+                </h4>
+                {activityHistory.length === 0 ? (
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
+                    Chưa ghi nhận hoạt động hoặc lịch sử rỗng.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '400px', overflowY: 'auto', paddingRight: '8px', paddingBottom: '8px' }} className="custom-scrollbar">
+                    {activityHistory.map((act, index) => (
+                      <div key={act.id || index} style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', color: 'var(--text-heading)', fontWeight: 600, gap: '12px' }}>
+                          <span style={{ fontSize: '13px' }}>{act.activityName || act.title || 'Hoạt động'}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>
+                            {act.timestamp ? new Date(act.timestamp).toLocaleString('vi-VN') : ''}
+                          </span>
+                        </div>
+                        {act.description && <div style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '12px', lineHeight: 1.5 }}>{act.description}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', padding: '20px 0', textAlign: 'center' }}>Không tải được thông tin người dùng.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="user-management-container">
       <div className="glass-card">
@@ -280,126 +427,6 @@ export default function UserManagement({ triggerNotification }) {
         )}
       </div>
 
-      {/* MODAL: TẠO TÀI KHOẢN CÁN BỘ */}
-      {showCreateModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '480px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><UserPlus size={18} style={{ marginRight: '6px' }} /> Thêm Tài khoản Cán bộ</h3>
-              <button className="modal-close" onClick={() => setShowCreateModal(false)}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleCreateUser} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-              <div className="form-group">
-                <label>Username *</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={createForm.username}
-                  onChange={e => {
-                    setCreateForm({ ...createForm, username: e.target.value });
-                    if (formErrors.username) setFormErrors(prev => ({ ...prev, username: null }));
-                  }}
-                  placeholder="Ví dụ: manager02"
-                />
-                {formErrors.username && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{formErrors.username}</span>}
-              </div>
-              <div className="form-group">
-                <label>Mật khẩu khởi tạo *</label>
-                <input
-                  type="password"
-                  className="input-field"
-                  value={createForm.password}
-                  onChange={e => {
-                    setCreateForm({ ...createForm, password: e.target.value });
-                    if (formErrors.password) setFormErrors(prev => ({ ...prev, password: null }));
-                  }}
-                  placeholder="Nhập mật khẩu..."
-                />
-                {formErrors.password && <span style={{ fontSize: '11px', color: 'var(--error, #ef4444)', marginTop: '4px', display: 'block' }}>{formErrors.password}</span>}
-              </div>
-              <div className="form-group">
-                <label>Vai trò hệ thống</label>
-                <select
-                  className="select-field"
-                  value={createForm.role}
-                  onChange={e => setCreateForm({ ...createForm, role: e.target.value })}
-                >
-                  <option value="MANAGER">MANAGER (Quản lý cấp trường)</option>
-                  <option value="ADMIN">ADMIN (Quản trị hệ thống)</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Tạo tài khoản</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Hủy</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: CHI TIẾT NGƯỜI DÙNG */}
-      {showDetailModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '540px', width: '90%' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><Eye size={16} style={{ marginRight: '6px' }} /> Chi tiết Người dùng & Lịch sử</h3>
-              <button className="modal-close" onClick={() => { setShowDetailModal(false); setUserDetail(null); setActivityHistory([]); }}><X size={18} /></button>
-            </div>
-            {loadingDetail ? (
-              <div style={{ textAlign: 'center', padding: '32px' }}>
-                <div className="login-spinner" style={{ margin: '0 auto' }}></div>
-              </div>
-            ) : userDetail ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {[
-                    ['Username', userDetail.username || 'N/A'],
-                    ['Họ & Tên', userDetail.fullName || userDetail.name || 'N/A'],
-                    ['Email', userDetail.schoolEmail || userDetail.email || 'N/A'],
-                    ['Vai trò', (userDetail.role || userDetail.systemRole || 'N/A').toUpperCase()],
-                    ['Trạng thái', userDetail.status === 'Active' ? 'Hoạt động' : userDetail.status || 'N/A'],
-                    ['MSSV', userDetail.studentId || 'N/A'],
-                    ['Khóa', userDetail.cohort || 'N/A'],
-                  ].map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                      <span style={{ minWidth: '120px', fontSize: '12px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-main)', wordBreak: 'break-all' }}>{value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Activity History Timeline */}
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-                  <h4 style={{ fontSize: '14px', color: 'var(--text-heading)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    📅 Lịch sử Hoạt động ({activityHistory.length})
-                  </h4>
-                  {activityHistory.length === 0 ? (
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px' }}>
-                      Chưa ghi nhận hoạt động hoặc lịch sử rỗng.
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '160px', overflowY: 'auto', paddingRight: '4px' }}>
-                      {activityHistory.map((act, index) => (
-                        <div key={act.id || index} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-heading)', fontWeight: 600 }}>
-                            <span>{act.activityName || act.title || 'Hoạt động'}</span>
-                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                              {act.timestamp ? new Date(act.timestamp).toLocaleString('vi-VN') : ''}
-                            </span>
-                          </div>
-                          {act.description && <div style={{ color: 'var(--text-muted)', marginTop: '4px', fontSize: '11px' }}>{act.description}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', padding: '16px 0' }}>Không tải được thông tin người dùng.</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

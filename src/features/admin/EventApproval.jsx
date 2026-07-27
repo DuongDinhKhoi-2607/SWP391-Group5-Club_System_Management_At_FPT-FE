@@ -183,6 +183,222 @@ export default function EventApproval({ triggerNotification, selectedClubId, mod
     (!selectedClubId || String(e.clubId) === String(selectedClubId))
   ).length;
 
+  // ── EVENT DETAIL VIEW ──────────────────────────────────────────────────────
+  if (expandedId) {
+    const ev = events.find(e => (e.id || e.eventId) === expandedId);
+    if (ev) {
+      const eventId = ev.id || ev.eventId;
+      const eventName = ev.eventName || ev.name;
+      const approvalStatus = ev.status || 'Pending';
+      const cfg = statusConfig[approvalStatus] || { label: approvalStatus, className: 'badge-member', icon: <Clock size={12} /> };
+      const club = getClub(ev.clubId);
+      const eventTime = ev.dateTime || ev.startTime;
+      const isProcessing = actionLoading === eventId;
+
+      // Resolve attached files from event object or localStorage persistence
+      let attachedFiles = ev.files || ev.documents || ev.attachments || [];
+      if (!Array.isArray(attachedFiles) || attachedFiles.length === 0) {
+        const byId = localStorage.getItem(`fpt_event_files_${eventId}`);
+        const byName = localStorage.getItem(`fpt_event_files_${eventName}`);
+        const str = byId || byName;
+        if (str) {
+          try { attachedFiles = JSON.parse(str); } catch {}
+        }
+      }
+
+      return (
+        <div style={{ animation: 'fadeIn 0.2s ease' }}>
+          <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setExpandedId(null)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+            >
+              <X size={16} /> Quay lại Duyệt Sự kiện
+            </button>
+          </div>
+          <div className="glass-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+              <h3 className="glass-card-title"><Calendar size={18} style={{ marginRight: '6px' }} /> Chi tiết & Phê duyệt Sự kiện</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h4 style={{ fontSize: '20px', color: 'var(--text-heading)', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                {eventName}
+              </h4>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+                {[
+                  ['Câu lạc bộ', club ? club.name : `CLB #${ev.clubId}`],
+                  ['Thời gian', eventTime ? formatDateVN(eventTime) : 'N/A'],
+                  ['Địa điểm', ev.venue || ev.location || 'N/A'],
+                  ['Ngân sách dự trù', ev.budget || ev.planBudget ? `${Number(ev.budget || ev.planBudget).toLocaleString('vi-VN')} VNĐ` : 'N/A'],
+                  ['Số lượng dự kiến', ev.targetParticipants ? `${ev.targetParticipants} người` : 'N/A'],
+                  ['Trạng thái', <span className={`badge ${cfg.className}`}>{cfg.label}</span>]
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '10px' }}>
+                    <span style={{ minWidth: '130px', fontSize: '13px', color: 'var(--text-muted)' }}>{label}</span>
+                    <span style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: 500 }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ fontSize: '14px', color: 'var(--text-main)', whiteSpace: 'pre-line', lineHeight: 1.6, background: 'rgba(0,0,0,0.15)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <strong style={{ color: 'var(--text-heading)', display: 'block', marginBottom: '8px' }}>Mô tả sự kiện:</strong>
+                {ev.description || 'Không có mô tả'}
+              </div>
+
+              {/* File đính kèm / Kế hoạch & Hình ảnh */}
+              {attachedFiles && attachedFiles.length > 0 && (() => {
+                const isImageFile = (file) => {
+                  const name = (file.name || file.fileName || file.url || file.path || '').toLowerCase();
+                  const type = (file.type || '').toLowerCase();
+                  return type.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
+                };
+
+                return (
+                  <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    <strong style={{ fontSize: '14px', color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                      <Paperclip size={16} style={{ color: 'var(--primary)' }} /> Tài liệu & Hình ảnh đính kèm ({attachedFiles.length}):
+                    </strong>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '12px' }}>
+                      {attachedFiles.map((file, idx) => {
+                        const fileName = file.name || file.fileName || `Tài_liệu_${idx + 1}`;
+                        const fileSize = file.size ? `${(file.size / 1024).toFixed(1)} KB` : '';
+                        const fileUrl = file.url || file.fileUrl || file.path;
+                        const isImg = isImageFile(file);
+
+                        const handleDownload = () => {
+                          if (!fileUrl) {
+                            alert('Không tìm thấy đường dẫn file!');
+                            return;
+                          }
+                          const a = document.createElement('a');
+                          a.href = fileUrl;
+                          a.download = fileName;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        };
+
+                        if (isImg) {
+                          return (
+                            <div key={idx} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: '13px', color: 'var(--text-main)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🖼️ {fileName}</span>
+                                {fileUrl && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={handleDownload}
+                                    style={{ fontSize: '11px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <Download size={12} />
+                                  </button>
+                                )}
+                              </div>
+                              {fileUrl && (
+                                <div style={{ textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '8px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <img src={fileUrl} alt={fileName} style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px', objectFit: 'contain' }} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                              <FileText size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                              <span style={{ fontSize: '13px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {fileName} {fileSize && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>({fileSize})</span>}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={handleDownload}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 12px', flexShrink: 0 }}
+                            >
+                              <Download size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {(ev.approvalRemark || ev.rejectReason) && (
+                <div style={{ padding: '12px', background: approvalStatus === 'Approved' ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', borderRadius: '8px', border: `1px solid ${approvalStatus === 'Approved' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, fontSize: '13px', color: 'var(--text-main)' }}>
+                  <strong style={{ color: approvalStatus === 'Approved' ? 'var(--success)' : 'var(--error)' }}>Ghi chú trước đó:</strong> {ev.approvalRemark || ev.rejectReason}
+                </div>
+              )}
+
+              {approvalStatus === 'Pending' && mode !== 'monitoring' ? (
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '10px' }}>
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                      Lý do từ chối / Yêu cầu chỉnh sửa (bắt buộc nếu từ chối hoặc yêu cầu sửa):
+                    </label>
+                    <textarea
+                      className="textarea-field"
+                      rows={3}
+                      placeholder="Nhập lý do phản hồi chi tiết..."
+                      value={remarkMap[eventId] || ''}
+                      onChange={e => setRemarkMap(m => ({ ...m, [eventId]: e.target.value }))}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-success"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+                      onClick={() => handleApprove(ev)}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? <span className="login-spinner" /> : <><CheckCircle size={16} /> Phê duyệt</>}
+                    </button>
+                    <button
+                      className="btn"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 20px',
+                        background: '#f59e0b',
+                        color: '#000',
+                        fontWeight: 600,
+                        border: 'none',
+                        boxShadow: '0 2px 4px rgba(245,158,11,0.3)',
+                        cursor: isProcessing ? 'not-allowed' : 'pointer'
+                      }}
+                      onClick={() => handleRequestEdit(ev)}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? <span className="login-spinner" /> : <><Edit3 size={16} /> Yêu cầu sửa</>}
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+                      onClick={() => handleReject(ev)}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? <span className="login-spinner" /> : <><XCircle size={16} /> Từ chối</>}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                  <button className="btn btn-secondary" style={{ padding: '10px 24px' }} onClick={() => setExpandedId(null)}>Đóng</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
   return (
     <div className="user-management-container">
       {/* Stats */}
@@ -315,212 +531,6 @@ export default function EventApproval({ triggerNotification, selectedClubId, mod
         )}
       </div>
 
-      {/* MODAL: CHI TIẾT & DUYỆT SỰ KIỆN */}
-      {expandedId && (() => {
-        const ev = events.find(e => (e.id || e.eventId) === expandedId);
-        if (!ev) return null;
-        const eventId = ev.id || ev.eventId;
-        const eventName = ev.eventName || ev.name;
-        const approvalStatus = ev.status || 'Pending';
-        const cfg = statusConfig[approvalStatus] || { label: approvalStatus, className: 'badge-member', icon: <Clock size={12} /> };
-        const club = getClub(ev.clubId);
-        const eventTime = ev.dateTime || ev.startTime;
-        const isProcessing = actionLoading === eventId;
-
-        // Resolve attached files from event object or localStorage persistence
-        let attachedFiles = ev.files || ev.documents || ev.attachments || [];
-        if (!Array.isArray(attachedFiles) || attachedFiles.length === 0) {
-          const byId = localStorage.getItem(`fpt_event_files_${eventId}`);
-          const byName = localStorage.getItem(`fpt_event_files_${eventName}`);
-          const str = byId || byName;
-          if (str) {
-            try { attachedFiles = JSON.parse(str); } catch {}
-          }
-        }
-
-        return (
-          <div className="modal-backdrop">
-            <div className="modal-content glass-card" style={{ maxWidth: '560px', width: '90%' }}>
-              <div className="modal-header">
-                <h3 className="modal-title"><Calendar size={18} style={{ marginRight: '6px' }} /> Chi tiết &amp; Phê duyệt Sự kiện</h3>
-                <button className="modal-close" onClick={() => setExpandedId(null)}><X size={18} /></button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-                <h4 style={{ fontSize: '18px', color: 'var(--text-heading)', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                  {eventName}
-                </h4>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {[
-                    ['Câu lạc bộ', club ? club.name : `CLB #${ev.clubId}`],
-                    ['Thời gian', eventTime ? formatDateVN(eventTime) : 'N/A'],
-                    ['Địa điểm', ev.venue || ev.location || 'N/A'],
-                    ['Ngân sách dự trù', ev.budget || ev.planBudget ? `${Number(ev.budget || ev.planBudget).toLocaleString('vi-VN')} VNĐ` : 'N/A'],
-                    ['Số lượng dự kiến', ev.targetParticipants ? `${ev.targetParticipants} người` : 'N/A'],
-                    ['Trạng thái', <span className={`badge ${cfg.className}`}>{cfg.label}</span>]
-                  ].map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                      <span style={{ minWidth: '150px', fontSize: '12px', color: 'var(--text-muted)' }}>{label}</span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>{value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ fontSize: '13px', color: 'var(--text-main)', whiteSpace: 'pre-line', lineHeight: 1.6, background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', maxHeight: '140px', overflowY: 'auto' }}>
-                  <strong>Mô tả sự kiện:</strong><br />
-                  {ev.description || 'Không có mô tả'}
-                </div>
-
-                {/* File đính kèm / Kế hoạch & Hình ảnh */}
-                {attachedFiles && attachedFiles.length > 0 && (() => {
-                  const isImageFile = (file) => {
-                    const name = (file.name || file.fileName || file.url || file.path || '').toLowerCase();
-                    const type = (file.type || '').toLowerCase();
-                    return type.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
-                  };
-
-                  return (
-                    <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                      <strong style={{ fontSize: '13px', color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                        <Paperclip size={14} style={{ color: 'var(--primary)' }} /> Tài liệu &amp; Hình ảnh đính kèm ({attachedFiles.length}):
-                      </strong>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {attachedFiles.map((file, idx) => {
-                          const fileName = file.name || file.fileName || `Tài_liệu_${idx + 1}`;
-                          const fileSize = file.size ? `${(file.size / 1024).toFixed(1)} KB` : '';
-                          const fileUrl = file.url || file.fileUrl || file.path;
-                          const isImg = isImageFile(file);
-
-                          const handleDownload = () => {
-                            if (!fileUrl) {
-                              alert('Không tìm thấy đường dẫn file!');
-                              return;
-                            }
-                            const a = document.createElement('a');
-                            a.href = fileUrl;
-                            a.download = fileName;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                          };
-
-                          if (isImg) {
-                            return (
-                              <div key={idx} style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <span style={{ fontSize: '12px', color: 'var(--text-main)', fontWeight: 600 }}>🖼️ {fileName}</span>
-                                  {fileUrl && (
-                                    <button
-                                      type="button"
-                                      className="btn btn-secondary btn-sm"
-                                      onClick={handleDownload}
-                                      style={{ fontSize: '11px', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                                    >
-                                      <Download size={12} /> Tải ảnh
-                                    </button>
-                                  )}
-                                </div>
-                                {fileUrl && (
-                                  <div style={{ textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '8px' }}>
-                                    <img src={fileUrl} alt={fileName} style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', objectFit: 'contain' }} />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                <FileText size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                                <span style={{ fontSize: '12px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  {fileName} {fileSize && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>({fileSize})</span>}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={handleDownload}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '4px 10px', flexShrink: 0 }}
-                              >
-                                <Download size={12} /> Tải về
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {(ev.approvalRemark || ev.rejectReason) && (
-                  <div style={{ padding: '10px', background: approvalStatus === 'Approved' ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', borderRadius: '8px', border: `1px solid ${approvalStatus === 'Approved' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, fontSize: '12px', color: 'var(--text-muted)' }}>
-                    <strong>Ghi chú trước đó:</strong> {ev.approvalRemark || ev.rejectReason}
-                  </div>
-                )}
-
-                {approvalStatus === 'Pending' && mode !== 'monitoring' ? (
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-                    <div className="form-group" style={{ marginBottom: '12px' }}>
-                      <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        Lý do từ chối / Yêu cầu chỉnh sửa (bắt buộc nếu từ chối hoặc yêu cầu sửa):
-                      </label>
-                      <textarea
-                        className="textarea-field"
-                        rows={2}
-                        placeholder="Nhập lý do..."
-                        value={remarkMap[eventId] || ''}
-                        onChange={e => setRemarkMap(m => ({ ...m, [eventId]: e.target.value }))}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button
-                        className="btn btn-success btn-sm"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        onClick={() => handleApprove(ev)}
-                        disabled={isProcessing}
-                      >
-                        {isProcessing ? <span className="login-spinner" /> : <><CheckCircle size={14} /> Phê duyệt</>}
-                      </button>
-                      <button
-                        className="btn btn-sm"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: '#f59e0b',
-                          color: '#000000',
-                          fontWeight: 600,
-                          border: 'none',
-                          boxShadow: '0 2px 4px rgba(245,158,11,0.3)',
-                          cursor: isProcessing ? 'not-allowed' : 'pointer'
-                        }}
-                        onClick={() => handleRequestEdit(ev)}
-                        disabled={isProcessing}
-                      >
-                        {isProcessing ? <span className="login-spinner" /> : <><Edit3 size={14} /> Yêu cầu sửa</>}
-                      </button>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        onClick={() => handleReject(ev)}
-                        disabled={isProcessing}
-                      >
-                        {isProcessing ? <span className="login-spinner" /> : <><XCircle size={14} /> Từ chối</>}
-                      </button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setExpandedId(null)}>Đóng</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => setExpandedId(null)}>Đóng</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }

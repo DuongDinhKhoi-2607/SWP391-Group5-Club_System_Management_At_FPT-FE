@@ -148,6 +148,67 @@ export default function SemesterConfig({ triggerNotification }) {
     }
   };
 
+  // ── EDIT SEMESTER VIEW ─────────────────────────────────────────────────────
+  if (showEditSemModal && editingSem) {
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => { setShowEditSemModal(false); setEditingSem(null); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+          >
+            <X size={16} /> Quay lại Cấu hình Học kỳ
+          </button>
+        </div>
+        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div className="glass-card-header" style={{ marginBottom: '16px' }}>
+            <h3 className="glass-card-title"><Edit size={18} style={{ marginRight: '6px' }} /> Sửa Học kỳ</h3>
+          </div>
+          <form onSubmit={handleUpdateSemester} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Tên học kỳ *</label>
+              <input type="text" className="input-field" value={editingSem.semesterName}
+                onChange={e => setEditingSem({ ...editingSem, semesterName: e.target.value })} required />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Mô tả</label>
+              <input type="text" className="input-field" value={editingSem.description || ''}
+                onChange={e => setEditingSem({ ...editingSem, description: e.target.value })} />
+            </div>
+            <div className="form-row">
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Ngày bắt đầu *</label>
+                <input type="date" className="input-field" value={editingSem.startDate?.slice(0,10) || ''}
+                  onChange={e => setEditingSem({ ...editingSem, startDate: e.target.value })} required />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Ngày kết thúc *</label>
+                <input type="date" className="input-field" value={editingSem.endDate?.slice(0,10) || ''}
+                  onChange={e => setEditingSem({ ...editingSem, endDate: e.target.value })} required />
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Trạng thái</label>
+              <select className="select-field" value={editingSem.status || 'Planned'}
+                onChange={e => setEditingSem({ ...editingSem, status: e.target.value })}>
+                <option value="Planned">Chưa diễn ra (Planned)</option>
+                <option value="Active">Đang diễn ra (Active)</option>
+                <option value="Finished">Đã kết thúc (Finished)</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '10px' }} disabled={isUpdatingSem}>
+                <Save size={16} style={{ marginRight: '6px' }} /> {isUpdatingSem ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+              <button type="button" className="btn btn-secondary" style={{ padding: '10px 20px' }} onClick={() => { setShowEditSemModal(false); setEditingSem(null); }}>Hủy</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="semester-config-container">
       <div className="stats-grid" style={{ maxWidth: '800px', margin: '0 auto 24px' }}>
@@ -276,56 +337,6 @@ export default function SemesterConfig({ triggerNotification }) {
         </div>
       </div>
 
-      {/* MODAL: SỬA HỌC KỲ */}
-      {showEditSemModal && editingSem && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-card" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title"><Edit size={16} style={{ marginRight: '6px' }} /> Sửa Học kỳ</h3>
-              <button className="modal-close" onClick={() => { setShowEditSemModal(false); setEditingSem(null); }}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleUpdateSemester} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-              <div className="form-group">
-                <label>Tên học kỳ *</label>
-                <input type="text" className="input-field" value={editingSem.semesterName}
-                  onChange={e => setEditingSem({ ...editingSem, semesterName: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Mô tả</label>
-                <input type="text" className="input-field" value={editingSem.description || ''}
-                  onChange={e => setEditingSem({ ...editingSem, description: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Ngày bắt đầu *</label>
-                  <input type="date" className="input-field" value={editingSem.startDate?.slice(0,10) || ''}
-                    onChange={e => setEditingSem({ ...editingSem, startDate: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label>Ngày kết thúc *</label>
-                  <input type="date" className="input-field" value={editingSem.endDate?.slice(0,10) || ''}
-                    onChange={e => setEditingSem({ ...editingSem, endDate: e.target.value })} required />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Trạng thái</label>
-                <select className="select-field" value={editingSem.status || 'Planned'}
-                  onChange={e => setEditingSem({ ...editingSem, status: e.target.value })}>
-                  <option value="Planned">Chưa diễn ra (Planned)</option>
-                  <option value="Active">Đang diễn ra (Active)</option>
-                  <option value="Finished">Đã kết thúc (Finished)</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isUpdatingSem}>
-                  <Save size={14} /> {isUpdatingSem ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => { setShowEditSemModal(false); setEditingSem(null); }}>Hủy</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -39,9 +39,9 @@ export default function Header({
   const loadNotifications = async () => {
     setLoadingNotifs(true);
     try {
-      const res = await getMyNotifications();
-      const list = Array.isArray(res) ? res : (res?.data ?? []);
       const isAdminOrManager = currentRole === 'ADMIN' || currentRole === 'MANAGER';
+      const res = await getMyNotifications(!isAdminOrManager ? selectedClubId : null);
+      const list = Array.isArray(res) ? res : (res?.data ?? []);
       let filtered;
       if (isAdminOrManager) {
         // Admin & Manager KHÔNG thấy thông báo nội bộ CLB (có clubId)
