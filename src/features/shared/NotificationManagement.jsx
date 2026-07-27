@@ -44,8 +44,10 @@ export default function NotificationManagement({ triggerNotification }) {
     try {
       const res = await getNotifications();
       const list = Array.isArray(res) ? res : (res?.data ?? []);
-      list.sort((a, b) => parseDateSafely(b.createdAt || b.sentAt) - parseDateSafely(a.createdAt || a.sentAt));
-      setNotifications(list);
+      // Admin & Manager không thấy thông báo nội bộ CLB (có clubId)
+      const systemOnly = list.filter(n => !n.clubId);
+      systemOnly.sort((a, b) => parseDateSafely(b.createdAt || b.sentAt) - parseDateSafely(a.createdAt || a.sentAt));
+      setNotifications(systemOnly);
     } catch (err) {
       console.error('[NotificationManagement] Lỗi tải thông báo:', err);
       triggerNotification('Không tải được danh sách thông báo!', 'error');

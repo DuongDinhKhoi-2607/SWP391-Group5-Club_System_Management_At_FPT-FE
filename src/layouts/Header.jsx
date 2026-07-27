@@ -41,8 +41,20 @@ export default function Header({
     try {
       const res = await getMyNotifications();
       const list = Array.isArray(res) ? res : (res?.data ?? []);
-      list.sort((a, b) => parseDateSafely(b.createdAt || b.sentAt) - parseDateSafely(a.createdAt || a.sentAt));
-      setNotifications(list);
+      const isAdminOrManager = currentRole === 'ADMIN' || currentRole === 'MANAGER';
+      let filtered;
+      if (isAdminOrManager) {
+        // Admin & Manager KHÔNG thấy thông báo nội bộ CLB (có clubId)
+        filtered = list.filter(n => !n.clubId);
+      } else {
+        // Member/Leader chỉ thấy: thông báo hệ thống (không có clubId)
+        // HOẶC thông báo của đúng CLB họ đang chọn
+        filtered = list.filter(n =>
+          !n.clubId || String(n.clubId) === String(selectedClubId)
+        );
+      }
+      filtered.sort((a, b) => parseDateSafely(b.createdAt || b.sentAt) - parseDateSafely(a.createdAt || a.sentAt));
+      setNotifications(filtered);
     } catch (err) {
       console.error('[Header] Lỗi tải thông báo:', err);
     } finally {
@@ -57,7 +69,8 @@ export default function Header({
       const interval = setInterval(loadNotifications, 60000);
       return () => clearInterval(interval);
     }
-  }, [currentUser]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, selectedClubId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

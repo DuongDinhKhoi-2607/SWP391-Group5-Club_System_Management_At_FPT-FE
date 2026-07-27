@@ -687,12 +687,13 @@ select option {
 /* Toast Alerts Container */
 .toast-container {
   position: fixed;
-  bottom: 24px;
+  top: 24px;
   right: 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  z-index: 2000;
+  z-index: 99999; /* Always above modals (modal is 10000) */
+  pointer-events: none; /* Don't block clicks behind */
 }
 
 .toast-message {
@@ -701,12 +702,13 @@ select option {
   gap: 12px;
   padding: 14px 20px;
   border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   color: var(--text-heading);
   font-size: 14px;
-  min-width: 280px;
-  max-width: 450px;
+  min-width: 300px;
+  max-width: 480px;
   animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: all; /* Re-enable pointer events on actual toast */
 }
 
 .toast-success {
