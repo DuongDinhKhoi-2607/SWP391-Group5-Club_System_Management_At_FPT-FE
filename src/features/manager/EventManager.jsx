@@ -117,14 +117,18 @@ export default function EventManager({ selectedClubId, triggerNotification }) {
   }, [selectedEventId]);
 
   const getParticipantEvidenceStatus = (p) => {
-    const pId = p.participantId || p.id;
-    const uId = p.userId;
-    const sCode = (p.studentId || p.studentCode || '').toLowerCase();
+    const pId = p.participantId || p.id || p.memberId || p.eventParticipantId;
+    const uId = p.userId || p.studentId || p.id;
+    const sCode = String(p.studentId || p.studentCode || p.code || p.userId || '').toLowerCase().trim();
+    const name = String(p.fullName || p.name || p.userName || p.userFullName || '').toLowerCase().trim();
 
     const matched = eventEvidences.find(ev => {
-      if (pId && String(ev.participantId) === String(pId)) return true;
-      if (uId && String(ev.userId || ev.studentId) === String(uId)) return true;
-      if (sCode && (ev.studentCode || ev.studentId || '').toLowerCase() === sCode) return true;
+      if (pId && (String(ev.participantId) === String(pId) || String(ev.id) === String(pId))) return true;
+      if (uId && (String(ev.userId) === String(uId) || String(ev.studentId) === String(uId))) return true;
+      const evCode = String(ev.studentCode || ev.studentId || ev.userId || '').toLowerCase().trim();
+      if (sCode && evCode && sCode === evCode) return true;
+      const evName = String(ev.userFullName || ev.fullName || ev.userName || ev.name || '').toLowerCase().trim();
+      if (name && evName && (name === evName || name.includes(evName) || evName.includes(name))) return true;
       return false;
     });
 
@@ -132,8 +136,8 @@ export default function EventManager({ selectedClubId, triggerNotification }) {
       return { status: 'none', label: 'Chưa nộp minh chứng', isManagerApproved: false, color: 'var(--text-muted)' };
     }
 
-    const isV = matched.isVerified || matched.status || '';
-    if (isV === 'Đã duyệt' || isV === 'Hợp lệ' || isV === 'Approved') {
+    const isV = String(matched.isVerified || matched.status || matched.rawStatus || '').trim();
+    if (isV === 'Đã duyệt' || isV === 'Hợp lệ' || isV === 'Approved' || isV === 'ManagerApproved') {
       return { status: 'approved', label: 'Đã phê duyệt (Có)', isManagerApproved: true, color: '#22c55e' };
     }
     if (isV === 'Chờ Manager duyệt') {
@@ -146,7 +150,7 @@ export default function EventManager({ selectedClubId, triggerNotification }) {
       return { status: 'rejected', label: 'Minh chứng bị từ chối', isManagerApproved: false, color: '#ef4444' };
     }
 
-    return { status: 'submitted', label: isV, isManagerApproved: false, color: 'var(--text-main)' };
+    return { status: 'submitted', label: isV || 'Đã nộp', isManagerApproved: false, color: 'var(--text-main)' };
   };
 
   const validateStartTime = (val) => {

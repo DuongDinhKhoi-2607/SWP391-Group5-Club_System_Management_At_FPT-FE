@@ -13,11 +13,28 @@ import {
 export default function EvidenceApproval({ triggerNotification, selectedClubId }) {
   const [evidences, setEvidences] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('Pending');
+  const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [remarkMap, setRemarkMap] = useState({});
   const [expandedId, setExpandedId] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+
+  const saveReviewedEvidence = (item) => {
+    try {
+      const stored = localStorage.getItem('fpt_reviewed_evidences');
+      const list = stored ? JSON.parse(stored) : [];
+      const idKey = String(item.id || item.evidenceId);
+      const existingIdx = list.findIndex(x => String(x.id || x.evidenceId) === idKey);
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...item };
+      } else {
+        list.push(item);
+      }
+      localStorage.setItem('fpt_reviewed_evidences', JSON.stringify(list));
+    } catch (e) {
+      console.warn('[EvidenceApproval] Local storage save error:', e);
+    }
+  };
 
   const loadEvidences = useCallback(async () => {
     setLoading(true);
@@ -37,10 +54,10 @@ export default function EvidenceApproval({ triggerNotification, selectedClubId }
       try {
         const eventsData = selectedClubId ? await getEventsByClub(selectedClubId) : await getAllEvents();
         const eventsList = Array.isArray(eventsData) ? eventsData : (eventsData?.data ?? []);
-        const recentEvents = eventsList.slice(0, 15);
+        const validEvents = eventsList.filter(e => e && (e.id || e.eventId || e.clubEventId)).slice(0, 30);
 
         const eventEvidencesLists = await Promise.allSettled(
-          recentEvents.map(e => getEventEvidences(e.id || e.eventId))
+          validEvents.map(e => getEventEvidences(e.id || e.eventId || e.clubEventId))
         );
 
         const existingMap = new Map();
@@ -61,15 +78,34 @@ export default function EvidenceApproval({ triggerNotification, selectedClubId }
           }
         });
 
+        // Merge local reviewed items history
+        try {
+          const stored = localStorage.getItem('fpt_reviewed_evidences');
+          if (stored) {
+            const localList = JSON.parse(stored);
+            if (Array.isArray(localList)) {
+              localList.forEach(item => {
+                const idKey = String(item.id || item.evidenceId);
+                const existing = existingMap.get(idKey);
+                if (existing) {
+                  existingMap.set(idKey, { ...existing, ...item });
+                } else {
+                  existingMap.set(idKey, item);
+                }
+              });
+            }
+          }
+        } catch (e) {}
+
         rawList = Array.from(existingMap.values());
       } catch (mergeErr) {
         console.warn('[EvidenceApproval] Could not merge event evidences:', mergeErr);
       }
 
       const allEvs = rawList.map(ev => {
-        const rawStatus = ev.isVerified || ev.status || 'Pending';
+        const rawStatus = String(ev.isVerified || ev.status || ev.rawStatus || 'Pending').trim();
         let normStatus = 'Pending';
-        if (rawStatus === 'Hợp lệ' || rawStatus === 'Approved' || rawStatus === 'Đã duyệt') {
+        if (rawStatus === 'Hợp lệ' || rawStatus === 'Approved' || rawStatus === 'Đã duyệt' || rawStatus === 'ManagerApproved') {
           normStatus = 'Approved';
         } else if (rawStatus === 'Không hợp lệ' || rawStatus === 'Rejected' || rawStatus === 'Từ chối' || rawStatus === 'Đã từ chối') {
           normStatus = 'Rejected';
@@ -111,8 +147,10 @@ export default function EvidenceApproval({ triggerNotification, selectedClubId }
     try {
       if (selectedClubId) {
         await reviewEvidenceLeader(ev.id, { status: 'Chờ Manager duyệt' });
+        saveReviewedEvidence({ ...ev, status: 'Approved', rawStatus: 'Chờ Manager duyệt' });
       } else {
         await reviewEvidence(ev.id, { status: 'Đã duyệt' });
+        saveReviewedEvidence({ ...ev, status: 'Approved', rawStatus: 'Đã duyệt' });
       }
       triggerNotification(`✅ Đã duyệt chứng nhận của ${ev.userFullName}!`, 'success');
       await loadEvidences();
@@ -135,6 +173,7 @@ export default function EvidenceApproval({ triggerNotification, selectedClubId }
       } else {
         await reviewEvidence(ev.id, { status: 'Từ chối' });
       }
+      saveReviewedEvidence({ ...ev, status: 'Rejected', rawStatus: 'Từ chối', rejectReason: remark });
       triggerNotification(`❌ Đã từ chối chứng nhận của ${ev.userFullName}!`, 'success');
       await loadEvidences();
     } catch (err) {
